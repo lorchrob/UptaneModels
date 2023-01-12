@@ -1,0 +1,102 @@
+theory UptaneVVM
+begin
+
+/* TODO
+  * Fill in VVM
+  * Update threshold crypto
+*/
+
+builtins: hashing, asymmetric-encryption, signing
+
+  //////////////////////////
+  ///////// RULES //////////
+  //////////////////////////
+
+  rule generate_key_pair:
+  [ Fr(~secret_key) ]
+  --[ GenKeyPair(~secret_key), Unique($ID) ]->
+  [ !Ltk($ID, ~secret_key), !Pk($ID, pk(~secret_key)) ]
+
+  rule get_public_key:
+  [ !Pk($ID, public_key) ]
+  --[ GetPubKey(public_key) ]->
+  [ Out(public_key) ]
+
+  rule secondary_send_ecu_version_report:
+  [ !Ltk('Secondary', ~secondary_secret_key), Fr(~ecu_version_report), Fr(~nonce) ]
+  --[ SendEcuVRep(<~ecu_version_report, ~nonce>) ]->
+  [ 
+    Out(< < ~ecu_version_report, ~nonce >, 
+          sign(< ~ecu_version_report, ~nonce >, ~secondary_secret_key) > ) 
+  ]
+
+  rule primary_generate_ecu_version_report:
+  [ !Ltk('Primary', ~primary_secret_key), Fr(~ecu_version_report), Fr(~nonce) ]
+  --[ GenEcuVRep(~ecu_version_report) ]->
+  [ 
+    PrimaryVRep(< ~ecu_version_report, ~nonce >, 
+                sign(< ~ecu_version_report, ~nonce >, ~primary_secret_key)) 
+  ]
+  
+  rule primary_send_vvm:
+  let vvm = < < ecu_version_report, sig >, < secondary_version_report, secondary_sig > >
+  in
+  [ 
+    !Ltk('Primary', ~primary_secret_key), 
+    PrimaryVRep(ecu_version_report, sig),
+    In(< secondary_version_report, secondary_sig >)
+  ]
+  --[ SendVVM(vvm) ]->
+  [ Out(< vvm, sign(vvm, ~primary_secret_key)>) ]
+
+  rule director_verify_vvm:
+  let signature = sign(vvm, ~primary_secret_key) 
+      primary_public_key = pk(~primary_secret_key) 
+      vvm = < < ecu_version_report, sig >, < secondary_version_report, secondary_sig > > in
+  [ 
+    !Pk('Primary', primary_public_key), 
+    !Pk('Secondary', secondary_public_key),
+    In(< vvm, signature >) 
+  ]
+  --[ 
+      Eq(verify(signature, vvm, primary_public_key), true),
+      Eq(verify(sig, ecu_version_report, primary_public_key), true),
+      Eq(verify(secondary_sig, secondary_version_report, secondary_public_key), true),
+      // Verify nonces haven't been seen before
+      Unique(snd(ecu_version_report)),
+      Unique(snd(secondary_version_report)),
+      VerifyVVM(vvm)
+    ]->
+  [ ]
+
+  //////////////////////////
+  ////// RESTRICTIONS //////
+  //////////////////////////
+
+  restriction Equality:
+    "All x y #i. Eq(x, y) @#i ==> x = y"
+
+  restriction Unique:
+    "All x #i #j. Unique(x) @#i & Unique(x) @#j ==> #i = #j"
+
+  //////////////////////////
+  ///////// LEMMAS /////////
+  //////////////////////////  
+
+  lemma executable1:
+    exists-trace 
+      "Ex vvm #i. VerifyVVM(vvm) @#i"
+  
+  lemma vvm_authentication: 
+    "All vvm #i. (VerifyVVM(vvm) @#i ==> (Ex #j. SendVVM(vvm) @#j & #j<#i))"
+
+  lemma vvm_freshness [use_induction]:
+    "All rep1 rep2 rep3 rep4 sig1 sig2 sig3 sig4 #i #j. 
+      VerifyVVM(< <rep1, sig1>, <rep2, sig2> >) @#i & VerifyVVM(< <rep3, sig3>, <rep4, sig4> >) @#j & #i < #j ==>
+      Ex #k #l. SendEcuVRep(rep2) @#k & SendEcuVRep(rep4) @#l & #k < #l"
+/*
+  lemma vvm_freshness:
+    "All rep1 rep2 rep3 rep4 sig1 sig2 sig3 sig4 #i #j. 
+      SendVVM(< <rep1, sig1>, <rep2, sig2> >) @#i & SendVVM(< <rep3, sig3>, <rep4, sig4> >) @#j & #i < #j ==>
+      Ex #k #l. SendEcuVRep(rep2) @#k & SendEcuVRep(rep4) @#l & #k < #l"*/
+end

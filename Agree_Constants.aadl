@@ -1,0 +1,18 @@
+package Agree_Constants
+public
+	with Data_Types;
+	
+	annex agree {**
+		-- enums
+		const ROOT_D: Data_Types::VerificationStage = enum(Data_Types::VerificationStage, ROOT_DIRECTOR);
+		const TIMESTAMP_D: Data_Types::VerificationStage = enum(Data_Types::VerificationStage, TIMESTAMP_DIRECTOR);
+		const SNAPSHOT_D: Data_Types::VerificationStage = enum(Data_Types::VerificationStage, SNAPSHOT_DIRECTOR);
+		const TARGETS_D: Data_Types::VerificationStage = enum(Data_Types::VerificationStage, TARGETS_DIRECTOR);
+		const ROOT_I: Data_Types::VerificationStage = enum(Data_Types::VerificationStage, ROOT_IMAGE);
+		const TIMESTAMP_I: Data_Types::VerificationStage = enum(Data_Types::VerificationStage, TIMESTAMP_IMAGE);
+		const SNAPSHOT_I: Data_Types::VerificationStage = enum(Data_Types::VerificationStage, SNAPSHOT_IMAGE);
+		const TARGETS_I: Data_Types::VerificationStage = enum(Data_Types::VerificationStage, TARGETS_IMAGE);
+		const VERIFY_SUCCESS: Data_Types::VerificationStage = enum(Data_Types::VerificationStage, VERIFICATION_SUCCESS);
+		const VERIFY_FAIL: Data_Types::VerificationStage = enum(Data_Types::VerificationStage, VERIFICATION_FAILURE);
+	**};
+end Agree_Constants;

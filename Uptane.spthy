@@ -1,0 +1,1096 @@
+theory Uptane
+begin
+
+heuristic: o "oracle"
+
+/* TODO
+  * Fill in VVM
+  * Update threshold crypto
+*/
+
+builtins: hashing, asymmetric-encryption, signing
+
+  //////////////////////////
+  ///////// RULES //////////
+  //////////////////////////
+
+  /// KEY GENERATION ///
+  // Generate public key
+  rule generate_key_pair:
+  [ Fr(~secret_key) ]
+  --[ GenKeyPair(~secret_key) ]->
+  [ !Ltk($ID, ~secret_key), !Pk($ID, pk(~secret_key)) ]
+
+  // Get public key
+  rule get_public_key:
+  [ !Pk($ID, public_key) ]
+  --[ GetPubKey(public_key) ]->
+  [ Out(public_key) ]
+
+  // Secret key compromise
+  /*
+  rule key_compromise:
+  [ !Ltk(ID, secret_key) ]
+  --[ KeyCompromise(secret_key) ]->
+  [ Out(secret_key) ]
+  */
+
+  /// INITIALIZATION ///
+  rule initialize:
+  [ 
+    Fr(~root_seckey1), Fr(~root_seckey2), Fr(~timestamp_seckey1), 
+    Fr(~timestamp_seckey2), Fr(~snapshot_seckey1), Fr(~snapshot_seckey2), 
+    Fr(~targets_seckey1), Fr(~targets_seckey2), Fr(~snapshot), 
+
+    Fr(~root_seckey3), Fr(~root_seckey4), Fr(~timestamp_seckey3), 
+    Fr(~timestamp_seckey4), Fr(~snapshot_seckey3), Fr(~snapshot_seckey4), 
+    Fr(~targets_seckey3), Fr(~targets_seckey4), Fr(~snapshot2), 
+
+    Fr(~primary_image), Fr(~secondary_image)
+  ]
+  --[ Unique('initialize') ]->
+  [ 
+    //// Primary metadata from director ////
+    PriMetaDir(
+      // Root metadata
+      <
+        pk(~root_seckey1), pk(~root_seckey2),
+        pk(~timestamp_seckey1), pk(~timestamp_seckey2), 
+        pk(~snapshot_seckey1), pk(~snapshot_seckey2), 
+        pk(~targets_seckey1), pk(~targets_seckey2)
+      >,
+      // Timestamp metadata
+      h(~snapshot), 
+      // Snapshot metadata
+      ~snapshot, 
+      // Targets metadata
+      < h(~primary_image), h(~secondary_image) >,
+      // Targets signatures
+      <
+        sign(< h(~primary_image), h(~secondary_image) >, ~targets_seckey1), 
+        sign(< h(~primary_image), h(~secondary_image) >, ~targets_seckey2)
+      >,
+      // State
+      'Not_verifying'
+    ),
+
+    PriLatestTargetsDir(< h(~primary_image), h(~secondary_image) >, 
+      <
+        sign(< h(~primary_image), h(~secondary_image) >, ~targets_seckey1), 
+        sign(< h(~primary_image), h(~secondary_image) >, ~targets_seckey2)
+      >
+    ),
+
+    //// Primary metadata from image repo ////
+    PriMetaImg(
+      // Root metadata
+      <
+        pk(~root_seckey3), pk(~root_seckey4),
+        pk(~timestamp_seckey3), pk(~timestamp_seckey4), 
+        pk(~snapshot_seckey3), pk(~snapshot_seckey4), 
+        pk(~targets_seckey3), pk(~targets_seckey4)
+      >,
+      // Timestamp metadata
+      h(~snapshot2), 
+      // Snapshot metadata
+      ~snapshot2, 
+      // Targets metadata
+      <h(~primary_image), h(~secondary_image)>,
+      // Targets signatures
+      <
+        sign(< h(~primary_image), h(~secondary_image) >, ~targets_seckey3), 
+        sign(< h(~primary_image), h(~secondary_image) >, ~targets_seckey4)
+      >,
+      // State
+      'Initialized'
+    ),
+    PriVerifyLimit('0'),
+
+    !DirectorState(
+      <
+        // Root metadata
+        < pk(~root_seckey1), pk(~root_seckey2), 
+        pk(~timestamp_seckey1), pk(~timestamp_seckey2),
+        pk(~snapshot_seckey1), pk(~snapshot_seckey2),
+        pk(~targets_seckey1), pk(~targets_seckey2) >,
+        // Timestamp metadata
+        h(~snapshot), 
+        // Snapshot metadata
+        ~snapshot, 
+        // Targets metadata
+        < h(~primary_image), h(~secondary_image) >
+      >,
+
+      //// Director keys ////
+      // Keys
+      <
+        ~root_seckey1, ~root_seckey2, 
+        ~timestamp_seckey1, ~timestamp_seckey2, 
+        ~snapshot_seckey1, ~snapshot_seckey2, 
+        ~targets_seckey1, ~targets_seckey2
+      >,
+
+      // Old keys
+      < ~root_seckey1, ~root_seckey2 >,
+
+      // Version
+      '0'
+    ),
+
+    !ImageState(
+      // Metadata
+      <
+        // Root metadata
+        < pk(~root_seckey3), pk(~root_seckey4), pk(~timestamp_seckey3), 
+          pk(~timestamp_seckey4), pk(~snapshot_seckey3), pk(~snapshot_seckey4), 
+          pk(~targets_seckey3), pk(~targets_seckey4) >,
+        // Timestamp metadata
+        h(~snapshot2), 
+        // Snapshot metadata
+        ~snapshot2, 
+        // Targets metadata
+        < h(~primary_image), h(~secondary_image) >
+      >,
+      // Keys
+      <
+        ~root_seckey3, ~root_seckey4, ~timestamp_seckey3, ~timestamp_seckey4, 
+        ~snapshot_seckey3, ~snapshot_seckey4, ~targets_seckey3, ~targets_seckey4 
+      >,
+      // Old keys
+      <
+        ~root_seckey3, ~root_seckey4
+      >,
+      // Images
+      <
+        ~primary_image, ~secondary_image
+      >,
+      // Version
+      '0'
+    ),
+
+    SecMetaDir(
+      < 
+        //pk(~root_seckey1), pk(~root_seckey2),
+        pk(~targets_seckey1), pk(~targets_seckey2)
+      >,
+      < h(~primary_image), h(~secondary_image) >
+    ),
+
+    SecMetaImg(
+      < 
+        pk(~root_seckey3), pk(~root_seckey4),
+        pk(~targets_seckey3), pk(~targets_seckey4)
+      >,
+      < h(~primary_image), h(~secondary_image) >
+    )
+  ]
+
+  
+  //// DIRECTOR ////
+  rule director_gen_nonroot_metadata:
+  [
+    !ImageState(metadata, keys, old_keys, <~primary_image, ~secondary_image>, version),
+    !DirectorState(
+      <
+        // Root metadata
+        < pk(~root_seckey1), pk(~root_seckey2), pk(~timestamp_seckey1), 
+          pk(~timestamp_seckey2), pk(~snapshot_seckey1), pk(~snapshot_seckey2), 
+          pk(~targets_seckey1), pk(~targets_seckey2) >,
+        // Timestamp metadata
+        h(snapshot), 
+        // Snapshot metadata
+        snapshot, 
+        // Targets metadata
+        < primary_image_hash, secondary_image_hash >
+      >,
+      keys, old_keys, '0'
+    ),
+    Fr(~new_snapshot)
+  ]
+  -->
+  [
+    !DirectorState(
+      <
+        // Root metadata
+        < pk(~root_seckey1), pk(~root_seckey2), pk(~timestamp_seckey1), 
+          pk(~timestamp_seckey2), pk(~snapshot_seckey1), pk(~snapshot_seckey2), 
+          pk(~targets_seckey1), pk(~targets_seckey2) >,
+        // Timestamp metadata
+        h(~new_snapshot), 
+        // Snapshot metadata
+        ~new_snapshot, 
+        // Targets metadata
+        < h(~primary_image), h(~secondary_image) >
+        >,
+      keys, old_keys, '1'
+    )
+  ]
+
+  rule director_gen_root_metadata:
+  [
+    !DirectorState(
+      // Metadata
+      <
+        // Root metadata
+        < pk(root_seckey1), pk(root_seckey2), pk(timestamp_seckey1), 
+          pk(timestamp_seckey2), pk(snapshot_seckey1), pk(snapshot_seckey2), 
+          pk(targets_seckey1), pk(targets_seckey2) >,
+        // Timestamp metadata
+        h(snapshot), 
+        // Snapshot metadata
+        snapshot, 
+        // Targets metadata
+        < primary_image_hash, secondary_image_hash >
+      >,
+      // Keys
+      <
+        root_seckey1, root_seckey2, timestamp_seckey1, timestamp_seckey2, 
+        snapshot_seckey1, snapshot_seckey2, targets_seckey1, targets_seckey2
+      >,
+      // Old keys
+      <
+        a, b
+      >,
+      // Version
+      '1'
+    ),
+
+    Fr(~new_root_seckey1), Fr(~new_root_seckey2), Fr(~new_timestamp_seckey1), 
+    Fr(~new_timestamp_seckey2), Fr(~new_snapshot_seckey1), Fr(~new_snapshot_seckey2), 
+    Fr(~new_targets_seckey1), Fr(~new_targets_seckey2)
+  ]
+  -->
+  [
+    !DirectorState(
+      // Metadata
+      <
+        // Root metadata
+        < pk(~new_root_seckey1), pk(~new_root_seckey2), pk(~new_timestamp_seckey1), 
+          pk(~new_timestamp_seckey2), pk(~new_snapshot_seckey1), pk(~new_snapshot_seckey2), 
+          pk(~new_targets_seckey1), pk(~new_targets_seckey2) >,
+        // Timestamp metadata
+        h(snapshot), 
+        // Snapshot metadata
+        snapshot, 
+        // Targets metadata
+        < primary_image_hash, secondary_image_hash >
+      >,
+      // Keys
+      <
+        ~new_root_seckey1, ~new_root_seckey2, ~new_timestamp_seckey1, 
+        ~new_timestamp_seckey2, ~new_snapshot_seckey1, ~new_snapshot_seckey2, 
+        ~new_targets_seckey1, ~new_targets_seckey2
+      >,
+      // Old keys
+      <
+        root_seckey1, root_seckey2
+      >,
+      // Version
+      '2'
+    )
+  ]
+
+
+  //// IMAGE REPO ////
+  rule image_gen_nonroot_metadata:
+  [
+    !ImageState(
+      <
+        // Root metadata
+        < pk(~root_seckey1), pk(~root_seckey2), pk(~timestamp_seckey1), 
+          pk(~timestamp_seckey2), pk(~snapshot_seckey1), pk(~snapshot_seckey2), 
+          pk(~targets_seckey1), pk(~targets_seckey2) >,
+        // Timestamp metadata
+        h(snapshot), 
+        // Snapshot metadata
+        snapshot, 
+        // Targets metadata
+        < primary_image_hash, secondary_image_hash >
+      >,
+      keys, old_keys,
+      <
+        primary_image, secondary_image
+      >,
+      '0'
+    ),
+    Fr(~new_snapshot), 
+    Fr(~new_primary_image), Fr(~new_secondary_image)
+  ]
+  -->
+  [
+    !ImageState(
+      <
+        // Root metadata
+        < pk(~root_seckey1), pk(~root_seckey2), pk(~timestamp_seckey1), 
+          pk(~timestamp_seckey2), pk(~snapshot_seckey1), pk(~snapshot_seckey2), 
+          pk(~targets_seckey1), pk(~targets_seckey2) >,
+        // Timestamp metadata
+        h(~new_snapshot), 
+        // Snapshot metadata
+        ~new_snapshot, 
+        // Targets metadata
+        < h(~new_primary_image),h(~new_secondary_image) >
+      >,
+      keys, old_keys,
+      <
+        ~new_primary_image, ~new_secondary_image
+      >,
+      '1'
+    )
+  ]
+
+  rule image_gen_root_metadata:
+  [
+    !ImageState(
+      // Metadata
+      <
+        // Root metadata
+        < pk(root_seckey1), pk(root_seckey2), pk(timestamp_seckey1), 
+          pk(timestamp_seckey2), pk(snapshot_seckey1), pk(snapshot_seckey2), 
+          pk(targets_seckey1), pk(targets_seckey2) >,
+        // Timestamp metadata
+        h(snapshot), 
+        // Snapshot metadata
+        snapshot, 
+        // Targets metadata
+        < primary_image_hash, secondary_image_hash >
+      >,
+      // Keys
+      <
+        root_seckey1, root_seckey2, timestamp_seckey1, timestamp_seckey2, 
+        snapshot_seckey1, snapshot_seckey2, targets_seckey1, targets_seckey2
+      >,
+      // Old keys
+      <
+        a, b
+      >,
+      images,
+      '1'
+    ),
+    Fr(~new_root_seckey1), Fr(~new_root_seckey2), Fr(~new_timestamp_seckey1), 
+    Fr(~new_timestamp_seckey2), Fr(~new_snapshot_seckey1), Fr(~new_snapshot_seckey2), 
+    Fr(~new_targets_seckey1), Fr(~new_targets_seckey2)
+  ]
+  -->
+  [
+    !ImageState(
+      <
+        // Root metadata
+        < pk(~new_root_seckey1), pk(~new_root_seckey2), pk(~new_timestamp_seckey1), 
+          pk(~new_timestamp_seckey2), pk(~new_snapshot_seckey1), pk(~new_snapshot_seckey2), 
+          pk(~new_targets_seckey1), pk(~new_targets_seckey2) >,
+        // Timestamp metadata
+        h(snapshot), 
+        // Snapshot metadata
+        snapshot, 
+        // Targets metadata
+        < primary_image_hash, secondary_image_hash >
+      >,
+      < 
+        ~new_root_seckey1, ~new_root_seckey2, ~new_timestamp_seckey1, 
+        ~new_timestamp_seckey2, ~new_snapshot_seckey1, ~new_snapshot_seckey2, 
+        ~new_targets_seckey1, ~new_targets_seckey2
+      >,
+      <
+        root_seckey1, root_seckey2
+      >,
+      images,
+      '2'
+    )
+  ]
+
+  
+  // Primary send vehicle version manifest (VVM) to director
+  rule primary_send_vvm:
+  [ !Ltk('Primary', ~primary_secret_key), Fr(~vvm) ]
+  --[ SendVVM(~vvm), Unique('primary_send_vvm') ]->
+  [ Out(<'Primary', 'Send_VVM', ~vvm, sign(~vvm, ~primary_secret_key)>) ]
+
+  // Director verify VVM from primary
+  rule director_verify_vvm:
+  let signature = sign(~vvm, ~primary_secret_key) 
+      primary_public_key = pk(~primary_secret_key) in
+  [ !Pk('Primary', primary_public_key), In(<'Primary', 'Send_VVM', ~vvm, signature>) ]
+  --[ 
+      Eq(verify(signature, ~vvm, primary_public_key), true),
+      VerifyVVM(~vvm),
+      Unique('director_verify_vvm')
+    ]->
+  [ ]
+  
+  
+  // Director send metadata to primary with two signatures (threshold crypto)
+  rule director_send_root_metadata:
+  let root = <pk(~root_seckey1), pk(~root_seckey2), 
+              pk(~ts1), pk(~ts2), pk(~ss1), pk(~ss2), 
+              pk(~tr1), pk(~tr2)> in
+  [ 
+    !DirectorState(< root, timestamp, ~snapshot, targets >, 
+      < ~root_seckey1, ~root_seckey2, c, d, e, f, g, i >,
+      < ~old_root_seckey1, ~old_root_seckey2 >, version)
+  ]
+  --[
+      LatestDirector(version),
+      Neq(~root_seckey1, ~root_seckey2),
+      SendRootMetadataDir(root),
+      Unique('director_send_root_metadata')
+    ]->
+  [  
+    Out(root),
+    Out( <
+      sign(root, ~root_seckey1), 
+      sign(root, ~root_seckey2),
+      sign(root, ~old_root_seckey1), 
+      sign(root, ~old_root_seckey2) >)
+  ]
+
+  
+  rule director_send_timestamp_metadata:
+  let timestamp = h(~snapshot) in
+  [ 
+    !DirectorState(< root, timestamp, ~snapshot, targets >,
+      < a, b, ~timestamp_seckey1, ~timestamp_seckey2, c, d, e, f >,
+      old_keys, version)
+  ]
+  --[
+      LatestDirector(version),
+      Neq(~timestamp_seckey1, ~timestamp_seckey2),
+      SendTimestampMetadataDir(timestamp),
+      Unique('director_send_timestamp_metadata')
+    ]->
+  [  
+    Out(timestamp), 
+    Out( <
+          sign(timestamp, ~timestamp_seckey1), 
+          sign(timestamp, ~timestamp_seckey2) >)
+  ]
+  
+  
+  rule director_send_snapshot_metadata:
+  [ 
+    !DirectorState(< root, timestamp, ~snapshot, targets >,
+      < a, b, c, d, ~snapshot_seckey1, ~snapshot_seckey2, e, f >,
+      old_keys, version)
+  ]
+  --[
+      LatestDirector(version),
+      Neq(~snapshot_seckey1, ~snapshot_seckey2),
+      SendSnapshotMetadataDir(~snapshot),
+      Unique('director_send_snapshot_metadata')
+    ]->
+  [  
+    Out(~snapshot),
+    Out(  <
+          sign(~snapshot, ~snapshot_seckey1), 
+          sign(~snapshot, ~snapshot_seckey2) >)
+  ]
+
+
+  rule director_send_targets_metadata:
+  let targets = < h(~primary_image), h(~secondary_image) > in
+  [ 
+    !DirectorState(< root, timestamp, snapshot, targets >,
+      < a, b, c, d, e, f, ~targets_seckey1, ~targets_seckey2 >,
+      old_keys, version) 
+  ]
+  --[
+      LatestDirector(version),
+      Neq(~targets_seckey1, ~targets_seckey2),
+      SendTargetsMetadataDir(targets),
+      Unique('director_send_targets_metadata')
+    ]->
+  [  
+    Out(targets),
+    Out( <
+          sign(targets, ~targets_seckey1), 
+          sign(targets, ~targets_seckey2) >)
+  ]
+
+  
+  // Image repo send metadata to primary with two signatures (threshold crypto)
+  rule image_send_root_metadata:
+  let root = <pk(~root_seckey1), pk(~root_seckey2), 
+              pk(~ts1), pk(~ts2), pk(~ss1), pk(~ss2), 
+              pk(~tr1), pk(~tr2)> in
+  [ 
+    !ImageState(< root, timestamp, ~snapshot, targets >, 
+      < ~root_seckey1, ~root_seckey2, c, d, e, f, g, i >,
+      < ~old_root_seckey1, ~old_root_seckey2 >, images, version)
+  ]
+  --[
+      LatestImage(version),
+      Neq(~root_seckey1, ~root_seckey2),
+      SendRootMetadataImg(root),
+
+      Unique('image_send_root_metadata')
+    ]->
+  [  
+    Out(root),
+    Out( <
+          sign(root, ~root_seckey1), 
+          sign(root, ~root_seckey2),
+          sign(root, ~old_root_seckey1), 
+          sign(root, ~old_root_seckey2) >)
+  ]
+
+  rule image_send_timestamp_metadata:
+  let timestamp = h(~snapshot) in
+  [ 
+    !ImageState(< root, timestamp, ~snapshot, targets >,
+      < a, b, ~timestamp_seckey1, ~timestamp_seckey2, c, d, e, f >,
+      old_keys, images, version)
+  ]
+  --[
+      LatestImage(version),
+      Neq(~timestamp_seckey1, ~timestamp_seckey2),
+      SendTimestampMetadataImg(timestamp),
+
+      Unique('image_send_timestamp_metadata')
+    ]->
+  [  
+    Out(timestamp), 
+    Out(<
+          sign(timestamp, ~timestamp_seckey1), 
+          sign(timestamp, ~timestamp_seckey2) >)
+  ]
+  
+  rule image_send_snapshot_metadata:
+  [ 
+    !ImageState(< root, timestamp, ~snapshot, targets >,
+      < a, b, c, d, ~snapshot_seckey1, ~snapshot_seckey2, e, f >,
+      old_keys, images, version)
+  ]
+  --[
+      LatestImage(version),
+      Neq(~snapshot_seckey1, ~snapshot_seckey2),
+      SendSnapshotMetadataImg(~snapshot),
+
+      Unique('image_send_snapshot_metadata')
+    ]->
+  [  
+    Out(~snapshot),
+    Out( < 
+          sign(~snapshot, ~snapshot_seckey1), 
+          sign(~snapshot, ~snapshot_seckey2) >)
+  ]
+
+
+  rule image_send_targets_metadata:
+  let targets = < h(~primary_image), h(~secondary_image) > in
+  [ 
+    !ImageState(< root, timestamp, snapshot, targets >,
+      < a, b, c, d, e, f, ~targets_seckey1, ~targets_seckey2 >,
+      old_keys, images, version) 
+  ]
+  --[
+      LatestImage(version),
+      Neq(~targets_seckey1, ~targets_seckey2),
+      SendTargetsMetadataImg(targets),
+
+      Unique('image_send_targets_metadata')
+    ]->
+  [  
+    Out(targets),
+    Out(< 
+          sign(targets, ~targets_seckey1), 
+          sign(targets, ~targets_seckey2) >)
+  ]
+
+
+  // Primary verify director metadata
+  rule primary_verify_meta_dir_root:
+  let root = < pk(~root_seckey1), pk(~root_seckey2), 
+                   pk(~timestamp_seckey1), pk(~timestamp_seckey2),
+                   pk(~snapshot_seckey1), pk(~snapshot_seckey2),
+                   pk(~targets_seckey1), pk(~targets_seckey2) > 
+      new_root = < pk(~new_root_seckey1), pk(~new_root_seckey2), 
+                   pk(~new_timestamp_seckey1), pk(~new_timestamp_seckey2),
+                   pk(~new_snapshot_seckey1), pk(~new_snapshot_seckey2),
+                   pk(~new_targets_seckey1), pk(~new_targets_seckey2) > 
+  in
+  [ 
+    In(new_root), 
+    In(< sig1, sig2, sig3, sig4 >),
+    PriMetaDir(root, timestamp, snapshot, targets, sigs, any_state)
+  ]
+  --[ 
+    
+      Eq(verify(sig1, new_root, pk(~root_seckey1)), true),
+      Eq(verify(sig2, new_root, pk(~root_seckey2)), true),
+      Eq(verify(sig3, new_root, pk(~new_root_seckey1)), true),
+      Eq(verify(sig4, new_root, pk(~new_root_seckey2)), true),
+      PriVerifyMetaDirRoot(new_root),
+
+      Unique('primary_verify_meta_dir_root')
+    ]->
+  [ 
+    PriMetaDir(new_root, timestamp, snapshot, targets, sigs, 'Verified_meta_dir_root')
+  ]
+
+  // Primary verify director metadata
+  rule primary_verify_meta_dir_timestamp:
+  let root = < pk(~root_seckey1), pk(~root_seckey2), 
+                   pk(~timestamp_seckey1), pk(~timestamp_seckey2),
+                   pk(~snapshot_seckey1), pk(~snapshot_seckey2),
+                   pk(~targets_seckey1), pk(~targets_seckey2) >
+      new_timestamp = h(~new_snapshot) 
+  in
+  [ 
+    In(new_timestamp),
+    In( < sig5, sig6 >),
+    PriMetaDir(root, timestamp, snapshot, targets, sigs, 'Verified_meta_dir_root')
+  ]
+  --[ 
+      Eq(verify(sig5, new_timestamp, pk(~timestamp_seckey1)), true),
+      Eq(verify(sig6, new_timestamp, pk(~timestamp_seckey2)), true),
+
+      PriVerifyMetaDirTimestamp(new_timestamp),
+
+      Unique('primary_verify_meta_dir_timestamp')
+    ]->
+  [ 
+    PriMetaDir(root, new_timestamp, snapshot, targets, sigs, 'Verified_meta_dir_timestamp')
+  ]
+
+  // Primary verify director metadata
+  rule primary_verify_meta_dir_snapshot:
+  let root = < pk(~root_seckey1), pk(~root_seckey2), 
+                   pk(~timestamp_seckey1), pk(~timestamp_seckey2),
+                   pk(~snapshot_seckey1), pk(~snapshot_seckey2),
+                   pk(~targets_seckey1), pk(~targets_seckey2) > 
+      new_snapshot = ~ss
+  in
+  [ 
+    In(new_snapshot),
+    In(< sig7, sig8 > ),
+    PriMetaDir(root, timestamp, snapshot, targets, sigs, 'Verified_meta_dir_timestamp')
+  ]
+  --[ 
+      Eq(verify(sig7, new_snapshot, pk(~snapshot_seckey1)), true),
+      Eq(verify(sig8, new_snapshot, pk(~snapshot_seckey2)), true),
+
+      Eq(h(new_snapshot), timestamp),
+
+      PriVerifyMetaDirSnapshot(new_snapshot),
+
+      Unique('primary_verify_meta_dir_snapshot')
+    ]->
+  [ 
+    PriMetaDir(root, timestamp, new_snapshot, targets, sigs, 'Verified_meta_dir_snapshot')
+  ]
+
+  // Primary verify director metadata
+  rule primary_verify_meta_dir_targets:
+  let root = < pk(~root_seckey1), pk(~root_seckey2), 
+                   pk(~timestamp_seckey1), pk(~timestamp_seckey2),
+                   pk(~snapshot_seckey1), pk(~snapshot_seckey2),
+                   pk(~targets_seckey1), pk(~targets_seckey2) > 
+      new_targets = < h(~primary_image), h(~secondary_image) >
+  in
+  [ 
+    In(new_targets),
+    In(< sig9, sig10 >),
+    PriMetaDir(root, timestamp, snapshot, targets, sigs, 'Verified_meta_dir_snapshot'),
+    PriLatestTargetsDir(targets, < sig1, sig2> )
+  ]
+  --[ 
+      Eq(verify(sig9, new_targets, pk(~targets_seckey1)), true),
+      Eq(verify(sig10, new_targets, pk(~targets_seckey2)), true),
+
+      PriVerifyMetaDirTargets(new_targets),
+
+      Unique('primary_verify_meta_dir_targets')
+    ]->
+  [ 
+    PriMetaDir(root, timestamp, snapshot, new_targets, < sig9, sig10 >, 'Verified_meta_dir_targets'),
+    PriLatestTargetsDir(new_targets, < sig9, sig10 >)
+  ]
+
+  
+  // Primary verify director image
+  rule primary_verify_meta_img_root:
+  let 
+      root_i = < pk(~root_seckey1_i), pk(~root_seckey2_i), 
+                pk(~timestamp_seckey1_i), pk(~timestamp_seckey2_i),
+                pk(~snapshot_seckey1_i), pk(~snapshot_seckey2_i),
+              pk(~targets_seckey1_i), pk(~targets_seckey2_i) > 
+      new_root_i = < pk(~new_root_seckey1_i), pk(~new_root_seckey2_i), 
+                pk(~new_timestamp_seckey1_i), pk(~new_timestamp_seckey2_i),
+                pk(~new_snapshot_seckey1_i), pk(~new_snapshot_seckey2_i),
+              pk(~new_targets_seckey1_i), pk(~new_targets_seckey2_i) > 
+      
+  in
+  [ 
+    In(< 'Image', 'Send_Metadata', 'Root',
+          new_root_i,
+          sig11, sig12, sig13, sig14 >),
+    PriMetaImg(root_i, timestamp_i, snapshot_i, targets_i, sigs_i, any_state)
+  ]
+  --[ 
+
+      Eq(verify(sig11, new_root_i, pk(~root_seckey1_i)), true),
+      Eq(verify(sig12, new_root_i, pk(~root_seckey2_i)), true),
+      Eq(verify(sig13, new_root_i, pk(~new_root_seckey1_i)), true),
+      Eq(verify(sig14, new_root_i, pk(~new_root_seckey2_i)), true),
+
+      PriVerifyMetaImgRoot(new_root_i)
+    ]->
+  [ 
+    PriMetaImg(new_root_i, timestamp_i, snapshot_i, targets_i, sigs_i, 'Verified_meta_img_root')
+  ]
+  
+
+   // Primary verify director image
+   rule primary_verify_meta_img_timestamp:
+   let 
+       root_i = < pk(~root_seckey1_i), pk(~root_seckey2_i), 
+                 pk(~timestamp_seckey1_i), pk(~timestamp_seckey2_i),
+                 pk(~snapshot_seckey1_i), pk(~snapshot_seckey2_i),
+               pk(~targets_seckey1_i), pk(~targets_seckey2_i) > 
+       new_timestamp_i = h(~new_snapshot)
+   in
+   [ 
+     In(new_timestamp_i),
+     In(< sig15, sig16 >),
+     PriMetaImg(root_i, timestamp_i, snapshot_i, targets_i, sigs_i, 'Verified_meta_img_root')
+   ]
+   --[ 
+       Eq(verify(sig15, new_timestamp_i, pk(~timestamp_seckey1_i)), true),
+       Eq(verify(sig16, new_timestamp_i, pk(~timestamp_seckey2_i)), true),
+ 
+       PriVerifyMetaImgTimestamp(new_timestamp_i)
+     ]->
+   [ 
+     PriMetaImg(root_i, new_timestamp_i, snapshot_i, targets_i, sigs_i, 'Verified_meta_img_timestamp')
+   ]
+
+    // Primary verify director image
+  rule primary_verify_meta_img_snapshot:
+  let 
+      root_i = < pk(~root_seckey1_i), pk(~root_seckey2_i), 
+                pk(~timestamp_seckey1_i), pk(~timestamp_seckey2_i),
+                pk(~snapshot_seckey1_i), pk(~snapshot_seckey2_i),
+              pk(~targets_seckey1_i), pk(~targets_seckey2_i) > 
+      new_snapshot_i = ~new_ss
+  in
+  [ 
+    In(new_snapshot_i),
+    In(< sig17, sig18 >),
+    PriMetaImg(root_i, timestamp_i, snapshot_i, targets_i, sigs_i, 'Verified_meta_img_timestamp')
+  ]
+  --[ 
+      Eq(verify(sig17, new_snapshot_i, pk(~snapshot_seckey1_i)), true),
+      Eq(verify(sig18, new_snapshot_i, pk(~snapshot_seckey2_i)), true),
+
+      Eq(h(new_snapshot_i), timestamp_i),
+      PriVerifyMetaImgSnapshot(new_snapshot_i)
+    ]->
+  [ 
+    PriMetaImg(root_i, timestamp_i, new_snapshot_i, targets_i, sigs_i, 'Verified_meta_img_snapshot')
+  ]
+
+  
+   // Primary verify director image
+   rule primary_verify_meta_img_targets:
+   let 
+       root_i = < pk(~root_seckey1_i), pk(~root_seckey2_i), 
+                 pk(~timestamp_seckey1_i), pk(~timestamp_seckey2_i),
+                 pk(~snapshot_seckey1_i), pk(~snapshot_seckey2_i),
+               pk(~targets_seckey1_i), pk(~targets_seckey2_i) > 
+       new_targets_i = <h(~primary_image), h(~secondary_image)>
+   in
+   [ 
+     In(new_targets_i),
+     In(< sig19, sig20 >),
+     //PriMetaDir(root, timestamp, snapshot, targets, sigs, 'Not_verifying'),
+     PriMetaImg(root_i, timestamp_i, snapshot_i, targets_i, sigs_i, 'Verified_meta_img_snapshot')
+   ]
+   --[ 
+       Eq(verify(sig19, new_targets_i, pk(~targets_seckey1_i)), true),
+       Eq(verify(sig20, new_targets_i, pk(~targets_seckey2_i)), true),
+       //Eq(new_targets_i, targets),
+
+       PriVerifyMetaImgTargets(new_targets_i),
+
+       Unique('primary_verify_meta_img_targets')
+     ]->
+   [ 
+     //PriMetaDir(root, timestamp, snapshot, targets, sigs, 'Not_verifying'),
+     PriMetaImg(root_i, timestamp_i, snapshot_i, new_targets_i, sigs_i, 'Not_verifying')
+   ]
+  
+
+
+ 
+  // Image repo sends images to primary
+  rule image_send_primary_images:
+  let ecu_encryption_key = pk(~ecu_secret_key) in
+  [ 
+    !Pk('ECU', ecu_encryption_key), 
+    !ImageState(metadata, keys, old_keys, <~primary_image, ~secondary_image>, version)
+  ]
+  --[ ImgSendImages(aenc(~primary_image, ecu_encryption_key), aenc(~secondary_image, ecu_encryption_key)), Unique('image_send_primary_images') ]->
+  [ 
+    Out(<'Image', 'Send_Image', aenc(~primary_image, ecu_encryption_key), 
+         aenc(~secondary_image, ecu_encryption_key)>)
+  ]
+
+  
+  // SLOWS DOWN
+  // Primary verifies images for itself and secondary
+  rule primary_verify_images:
+  let encrypted_image_primary = aenc(~primary_image, pk(~ecu_decryption_key))
+      encrypted_image_secondary = aenc(~secondary_image, pk(~ecu_decryption_key))
+      image_hash_primary = h(~primary_image)
+      image_hash_secondary = h(~secondary_image) in
+  [ 
+    !Ltk('ECU', ~ecu_decryption_key), 
+    In(< encrypted_image_primary, encrypted_image_secondary >),
+    //PriMetaDir(root, timestamp, snapshot, <image_hash_primary, image_hash_secondary>, sigs, 'Not_verifying')
+    PriLatestTargetsDir(<image_hash_primary, image_hash_secondary>, sigs)
+  ]
+  --[ Eq(h(adec(encrypted_image_primary, ~ecu_decryption_key)), image_hash_primary),
+      Eq(h(adec(encrypted_image_secondary, ~ecu_decryption_key)), image_hash_secondary),
+      VerifyImages(encrypted_image_primary, encrypted_image_secondary),
+
+      Unique('primary_verify_images')
+    ]->
+  [ 
+    //PriMetaDir(root, timestamp, snapshot, <image_hash_primary, image_hash_secondary>, sigs, 'Not_verifying'),
+    PriLatestTargetsDir(< image_hash_primary, image_hash_secondary >, sigs),
+    SecImageVerified(encrypted_image_secondary)
+  ]
+  
+  
+
+  //// PRIMARY AND SECONDARY ////
+  // Secondary sends ECU report to primary
+  rule secondary_send_ecu_version_report:
+  [ Fr(~ecu_version_report) ]
+  --[ SendEcuVRep(~ecu_version_report), Unique('secondary_send_ecu_version_report') ]->
+  [ Out(< 'Secondary', 'Send_ECU_Version_Report', ~ecu_version_report> ) ]
+
+  
+  // SLOWS DOWN
+  // Primary sends metadata to secondary
+  rule primary_send_metadata:
+  let targets = < h(~primary_image), h(~secondary_image) >
+      sig1 = sign(< h(~primary_image), h(~secondary_image) >, ~targets_seckey1)
+      sig2 = sign(< h(~primary_image), h(~secondary_image) >, ~targets_seckey2) in
+    [ 
+      //PriMetaDir(root, timestamp, snapshot, targets, < sig1, sig2 >, 'Not_verifying')
+      PriLatestTargetsDir(targets, < sig1, sig2> )
+    ]
+    --[PriSendMeta(targets), Unique('primary_send_metadata')]->
+    [ 
+      Out(< targets, sig1, sig2 >),
+      //PriMetaDir(root, timestamp, snapshot, targets, < sig1, sig2 >, 'Not_verifying')
+      PriLatestTargetsDir(targets, < sig1, sig2> )
+    ]
+    
+
+
+  // Secondary verifies director metadata from primary
+  rule secondary_verify_metadata:
+  let new_targets = < h(~primary_image), h(~secondary_image) >
+      sig1 = sign(< h(~primary_image), h(~secondary_image) >, ~targets_seckey1)
+      sig2 = sign(< h(~primary_image), h(~secondary_image) >, ~targets_seckey2) 
+      targets_pubkey1 = pk(~targets_seckey1)
+      targets_pubkey2 = pk(~targets_seckey2) in
+  [  
+    In(< new_targets, sig1, sig2 >),
+    SecMetaDir(< targets_pubkey1, targets_pubkey2 >, targets)
+  ]
+  --[ 
+      Neq(targets_pubkey1, targets_pubkey2),
+      Eq(verify(sig1, new_targets, targets_pubkey1), true),
+      Eq(verify(sig2, new_targets, targets_pubkey2), true),
+      SecVerifyTargetsMetadataDir(new_targets),
+
+      Unique('secondary_verify_metadata')
+    ]->
+  [     
+    SecMetaDir(< targets_pubkey1, targets_pubkey2 >, new_targets)
+  ]
+
+  // Primary sends image to secondary
+  rule primary_send_image:
+  let encrypted_image = aenc(~secondary_image, pk(~ecu_key)) in
+  [ 
+    SecImageVerified(encrypted_image)
+  ]
+  --[ PriSendIm(encrypted_image), Unique('primary_send_image') ]->
+  [ Out(< encrypted_image >) ]
+
+  // Secondary verifies image from primary
+  rule secondary_verify_image:
+  let ecu_decryption_key = ~ecu_key
+      encrypted_image = aenc(~secondary_image, pk(~ecu_key))
+      image_hash_primary = h(~primary_image)
+      image_hash_secondary = h(~secondary_image) in
+  [ 
+    !Ltk('ECU', ecu_decryption_key), 
+    In(< encrypted_image >),
+    SecMetaDir(root, <image_hash_primary, image_hash_secondary>) 
+  ]
+  --[ 
+      Eq(h(adec(encrypted_image, ecu_decryption_key)), image_hash_secondary),
+      VerifyImageSec(encrypted_image),
+      
+      Unique('secondary_verify_image')
+    ]->
+  [ SecMetaDir(root, <image_hash_primary, image_hash_secondary>) ]
+
+  //////////////////////////
+  ////// RESTRICTIONS //////
+  //////////////////////////
+
+  restriction Equality:
+    "All x y #i. Eq(x, y) @#i ==> x = y"
+
+  restriction LatestDirector:
+    "(All x #i #j. LatestDirector('0') @#i & LatestDirector(x) @#j ==>
+        x = '0' | #i < #j) &
+     (All x #i #j. LatestDirector('1') @#i & LatestDirector(x) @#j ==>
+        x = '1' | x = '0' | #i < #j) & 
+     (All x #i #j. LatestDirector('2') @#i & LatestDirector(x) @#j ==>
+        x = '2' | x = '1' | x = '0' | #i < #j)"
+
+  restriction LatestImage:
+    "(All x #i #j. LatestImage('0') @#i & LatestImage(x) @#j ==>
+        x = '0' | #i < #j) &
+      (All x #i #j. LatestImage('1') @#i & LatestImage(x) @#j ==>
+        x = '1' | x = '0' | #i < #j) & 
+      (All x #i #j. LatestImage('2') @#i & LatestImage(x) @#j ==>
+        x = '2' | x = '1' | x = '0' | #i < #j)"
+
+  /*
+  restriction Inequality:
+    "All x #i. Neq(x, x) @ #i ==> F"
+*/
+
+  restriction Unique:
+    "All x #i #j. Unique(x) @#i & Unique(x) @#j ==> #i = #j"
+
+  restriction Twice:
+    "All x #i #j #k. Twice(x) @#i & Twice(x) @#j & Twice(x) @#k ==> 
+      #i = #j | #i = #k | #j = #k"
+
+  //////////////////////////
+  ///////// LEMMAS /////////
+  //////////////////////////  
+
+  lemma types [sources]:
+  " (All vvm #i.
+      VerifyVVM(vvm) @ i
+       ==>
+       ( (Ex #j. KU(vvm) @ j & j < i)
+       | (Ex #j. SendVVM(vvm) @ j)
+       )
+    )
+  "
+
+  //// Sanity checks
+  lemma executable1:
+    exists-trace 
+      "Ex vvm #i. VerifyVVM(vvm) @#i"
+
+  lemma executable3:
+    exists-trace 
+      "Ex meta #i. PriVerifyMetaDirRoot(meta) @#i"
+
+  lemma executable4:
+    exists-trace 
+      "Ex meta #i. PriVerifyMetaDirTimestamp(meta) @#i"
+
+  lemma executable5:
+    exists-trace 
+      "Ex meta #i. PriVerifyMetaDirSnapshot(meta) @#i"
+
+  lemma executable6:
+    exists-trace 
+      "Ex meta #i. PriVerifyMetaDirTargets(meta) @#i"
+  
+  lemma executable7:
+    exists-trace 
+      "Ex meta #i. PriVerifyMetaImgRoot(meta) @#i"
+
+  lemma executable8:
+    exists-trace 
+      "Ex meta #i. PriVerifyMetaImgTimestamp(meta) @#i"
+
+  lemma executable9:
+    exists-trace 
+      "Ex meta #i. PriVerifyMetaImgSnapshot(meta) @#i"
+
+  lemma executable10:
+    exists-trace 
+      "Ex meta #i. PriVerifyMetaImgTargets(meta) @#i"
+
+  lemma executable11:
+    exists-trace 
+      "Ex meta #i. SecVerifyTargetsMetadataDir(meta) @#i"
+      
+  lemma executable12:
+    exists-trace 
+      "Ex img1 img2 #i. VerifyImages(img1, img2) @#i"
+
+  lemma executable13:
+    exists-trace 
+      "Ex img #i. VerifyImageSec(img) @#i"
+
+  
+  //// Authenticity checks
+  lemma vvm_authentication: 
+    "All vvm #i. (VerifyVVM(vvm) @#i ==> (Ex #j. SendVVM(vvm) @#j & #j<#i))"
+    
+  lemma meta_authentication1: 
+    "All root #i. (PriVerifyMetaDirRoot(root) @#i ==> 
+      (Ex #j. SendRootMetadataDir(root) @#j & #j<#i))"
+
+  lemma meta_authentication2: 
+    "All ts #i. (PriVerifyMetaDirTimestamp(ts) @#i ==> 
+      (Ex #j. SendTimestampMetadataDir(ts) @#j & #j<#i))"
+
+  lemma meta_authentication3: 
+    "All ss #i. (PriVerifyMetaDirSnapshot(ss) @#i ==> 
+      (Ex #j. SendSnapshotMetadataDir(ss) @#j & #j<#i))"
+
+  lemma meta_authentication4 [use_induction]: 
+    "All targets #i. (PriVerifyMetaDirTargets(targets) @#i ==> 
+      (Ex #j. SendTargetsMetadataDir(targets) @#j & #j<#i))"
+
+  lemma meta_authentication5: 
+    "All root #i. (PriVerifyMetaImgRoot(root) @#i ==> 
+      (Ex #j. SendRootMetadataImg(root) @#j & #j<#i))"
+
+  lemma meta_authentication_sec1: 
+    "All targets #i. (SecVerifyTargetsMetadataDir(targets) @#i ==> 
+      (Ex #j. PriSendMeta(targets) @#j & #j<#i))"
+
+  lemma meta_authentication_sec2: 
+    "All targets #i. (SecVerifyTargetsMetadataDir(targets) @#i ==> 
+      (Ex #j. SendTargetsMetadataDir(targets) @#j & #j<#i))"
+
+  lemma meta_authentication_sec3: 
+    "All targets #i. (SecVerifyTargetsMetadataDir(targets) @#i ==> 
+      (Ex #j. SendTargetsMetadataDir(targets) @#j & #j<#i) |
+      (Ex #j. PriSendMeta(targets) @#j & #j<#i))"
+      
+  lemma image_authentication1: 
+    "All img1 img2 #i. (VerifyImages(img1, img2) @#i ==> 
+      (Ex #j. ImgSendImages(img1, img2) @#j & #j<#i))"
+
+  lemma image_authentication_sec1: 
+    "All img #i. (VerifyImageSec(img) @#i ==> 
+      (Ex #j. PriSendIm(img) @#j & #j<#i))"
+  
+  lemma image_authentication_sec2: 
+    "All img #i. (VerifyImageSec(img) @#i ==> 
+      (Ex img2 #j. ImgSendImages(img2, img) @#j & #j<#i))"
+
+  lemma image_authentication_sec3: 
+    "All img #i. (VerifyImageSec(img) @#i ==> 
+      (Ex img2 #j. ImgSendImages(img2, img) @#j & #j<#i) |
+      (Ex #j. PriSendIm(img) @#j & #j<#i))"
+ end

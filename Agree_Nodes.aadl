@@ -1,0 +1,70 @@
+package Agree_Nodes
+public
+	with Data_Types;
+	
+	annex agree {**
+			
+		-- HasHappened(X) is true iff X has been true at least once so far
+		node HasHappened(X : bool) returns (Y : bool);
+		let
+  			Y = X or (false -> pre (Y)) ;
+		tel;
+
+		-- Initially(X) is true iff X was true at the initial step
+		node InitiallyX(X: bool) returns (Y: bool);
+		let
+  			Y = X -> true;
+		tel;
+		
+		node Duration(p: bool) returns (r: int) ;
+		let   
+			r = (if p then 1 else 0) -> (if p then pre(r) + 1 else 0) ;
+		tel;
+		
+		node Sofar(X : bool ) returns ( Y : bool );
+		let
+ 			Y = X -> (X and (pre(Y)));
+		tel;
+		
+		node Since(X: bool, Y : bool ) returns (Z : bool);
+		let
+  			Z =  X or (Y and (false -> pre(Z)));
+		tel;
+		
+		node ToInt(b: bool) returns (i: int);
+		let
+			i = if b then 1 else 0;
+		tel;
+		
+		-- "Bogus" predicate for a digital signature X with matching the hashed payload Y with
+		-- public key Z
+		node Match(X: int, Y: int, Z: int) returns (B: bool);
+		let
+			B = (Y + Z) - 5 <= X and X <= (Y + Z) + 5;
+		tel;
+
+		-- "Bogus" predicate for two images being compatible
+		node Compatible(X: int, Y: int) returns (Z: bool);
+		let
+			Z = Y - 5 <= X and X <= Y + 5;
+		tel;
+
+		node Compatible3(X: int, Y: int, Z: int) returns (o: bool);
+		let
+			o = (0 <= X + Y + Z) and (X + Y + Z < 10);
+		tel;
+
+		node AuthoredByOem(X: int) returns (Z: bool);
+		let
+			Z = (X >= 0);
+		tel;
+
+		node ChangesEvery20 (x: Data_Types::Image.impl) returns (Z: bool);
+		let			
+		Z = true -> pre (true -> pre (true -> pre (true -> pre (true -> pre (true -> 
+		            pre (true -> pre (true -> pre (true -> pre (true -> pre (true -> 
+								pre (true -> pre (true -> pre (true -> pre (true -> pre (true -> 
+								pre (true -> pre (true -> pre (true -> pre (true -> (x <> pre (x)))))))))))))))))))));
+		tel
+	**};
+end Agree_Nodes;

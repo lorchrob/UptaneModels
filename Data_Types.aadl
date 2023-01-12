@@ -1,0 +1,427 @@
+package Data_Types
+public
+	with Data_Model;
+	with Base_Types;
+	
+	-- COMMUNICATION --
+	data OemToImage
+	end OemToImage;
+
+	data implementation OemToImage.impl
+		subcomponents
+			stub: data Base_Types::Integer;
+	end OemToImage.impl;
+
+	data PrimaryToImage
+	end PrimaryToImage;
+	
+	data implementation PrimaryToImage.impl
+		subcomponents
+			image_filename: data Base_Types::Integer;
+			image_hash: data Base_Types::Integer;
+			image_filename_secondary: data Base_Types::Integer;
+			image_hash_secondary: data Base_Types::Integer;
+			metadata_request: data MetadataRequest.impl;
+			image_request: data Base_Types::Boolean;
+	end PrimaryToImage.impl;
+	
+	data PrimaryToDirector
+	end PrimaryToDirector;
+	
+	data implementation PrimaryToDirector.impl
+		subcomponents
+			metadata_request: data MetadataRequest.impl;
+			manifest: data VehicleVersionManifest.impl;
+			manifest_present: data Base_Types::Boolean;
+	end PrimaryToDirector.impl;
+	
+	data ImageToPrimary
+	end ImageToPrimary;
+	
+	data implementation ImageToPrimary.impl
+		subcomponents
+			image: data Image.impl;
+			image_secondary: data Image.impl;
+			metadata: data Metadata.impl;
+			image_response: data Base_Types::Boolean;
+			metadata_response: data MetadataRequest.impl;
+			metadata_present: data Base_Types::Boolean;
+	end ImageToPrimary.impl;
+	
+	data DirectorToPrimary
+	end DirectorToPrimary;
+	
+	data implementation DirectorToPrimary.impl
+		subcomponents
+			metadata: data Metadata.impl;
+			metadata_response: data MetadataRequest.impl;
+			--metadata_present: data Base_Types::Boolean;
+	end DirectorToPrimary.impl;
+	
+	data PrimaryToSecondary
+	end PrimaryToSecondary;
+	
+	data implementation PrimaryToSecondary.impl
+		subcomponents
+			metadata: data Metadata.impl;
+			metadata_present: data MetadataRequest.impl;
+			image: data Image.impl;
+			image_present: data Base_Types::Boolean;
+			current_time: data Base_Types::Integer;
+			time_present: data Base_Types::Boolean;
+			report_request: data Base_Types::Boolean;
+	end PrimaryToSecondary.impl;
+	
+	data SecondaryToPrimary
+	end SecondaryToPrimary;
+	
+	data implementation SecondaryToPrimary.impl
+		subcomponents
+			ecu_version_report: data EcuVersionReport.impl;
+			report_present: data Base_Types::Boolean;
+	end SecondaryToPrimary.impl;
+	
+	-- INITIALIZATION --
+	data InitializationBus
+	end InitializationBus;
+	
+	data implementation InitializationBus.impl
+		subcomponents
+			ecu_key_one: data Base_Types::Integer;
+			ecu_key_two: data Base_Types::Integer;
+			ecu_key_three: data Base_Types::Integer;
+			ecu_id_one: data Base_Types::Integer;
+			ecu_id_two: data Base_Types::Integer;
+			ecu_id_three: data Base_Types::Integer;
+			hardware_id_one: data Base_Types::Integer;
+			hardware_id_two: data Base_Types::Integer;
+			hardware_id_three: data Base_Types::Integer;
+			metadata_d: data Metadata.impl;
+			metadata_i: data Metadata.impl;
+			primary_image: data Image.impl;
+			--primary_image_metadata: data ImageMetadata.impl;
+			secondary_image: data Image.impl;
+			secondary_image2: data Image.impl;
+			--secondary_image_metadata: data ImageMetadata.impl;
+			manifest: data VehicleVersionManifest.impl;
+			--image_set: data ImageSet.impl;
+			report_two: data EcuVersionReport.impl;
+			optional_features_flag: data Base_Types::Boolean;
+	end InitializationBus.impl;
+	
+	-- LISTS --
+	data EcuVersionReportList
+	end EcuVersionReportList;
+	
+	data implementation EcuVersionReportList.impl
+		subcomponents
+			report_one: data EcuVersionReport.impl;
+			report_two: data EcuVersionReport.impl;
+	end EcuVersionReportList.impl;
+	
+	data EcuIdList
+	end EcuIdList;
+	
+	data implementation EcuIdList.impl
+		subcomponents
+			ecu_id_one: data Base_Types::Integer;
+			ecu_id_two: data Base_Types::Integer;
+			ecu_id_three: data Base_Types::Integer;
+	end EcuIdList.impl;
+	
+	data KeyList
+	end KeyList;
+
+	data implementation KeyList.impl
+		subcomponents
+			key_one: data Base_Types::Integer;
+			key_two: data Base_Types::Integer;
+	end KeyList.impl;
+	
+	data FilenameList
+	end FilenameList;
+	
+	data implementation FilenameList.impl
+		subcomponents
+			filename_one: data Base_Types::Integer;
+			filename_two: data Base_Types::Integer;
+			filename_three: data Base_Types::Integer;
+	end FilenameList.impl;
+	
+	data HashList
+	end HashList;
+	
+	data implementation HashList.impl
+		subcomponents
+			hash_one: data Base_Types::Integer;
+			hash_two: data Base_Types::Integer;	
+			hash_three: data Base_Types::Integer;
+	end HashList.impl;
+	
+	data FileSizeList
+	end FileSizeList;
+	
+	data implementation FileSizeList.impl
+		subcomponents
+			file_size_one: data Base_Types::Integer;
+			file_size_two: data Base_Types::Integer;
+			file_size_three: data Base_Types::Integer;
+	end FileSizeList.impl;
+	
+	data VersionNumberList
+	end VersionNumberList;
+	
+	data implementation VersionNumberList.impl
+		subcomponents
+			version_number_one: data Base_Types::Integer;
+			version_number_two: data Base_Types::Integer;
+	end VersionNumberList.impl;
+	
+	data SignatureList
+	end SignatureList;
+	
+	data implementation SignatureList.impl
+		subcomponents
+			signature_one: data Base_Types::Integer;
+			signature_two: data Base_Types::Integer;
+	end SignatureList.impl;
+	
+	--- METADATA ---
+	data CommonPayload
+	end CommonPayload;
+
+	data implementation CommonPayload.impl
+		subcomponents
+			--role: data Role;
+			expiration: data Base_Types::Integer;
+			version: data Base_Types::Integer;
+			filename: data Base_Types::Integer; 
+			signatures: data SignatureList.impl;
+			signature_keys: data KeyList.impl;
+			hash: data Base_Types::Integer; -- Not sure about this
+	end CommonPayload.impl;
+
+	data RootMetadata
+	end RootMetadata;
+
+	data implementation RootMetadata.impl
+		subcomponents
+			common_payload: data CommonPayload.impl;
+			root_public_keys: data KeyList.impl; 
+			root_threshold_signatures: data Base_Types::Integer;
+			targets_public_keys: data KeyList.impl; 
+			targets_threshold_signatures: data Base_Types::Integer;
+			snapshot_public_keys: data KeyList.impl; 
+			snapshot_threshold_signatures: data Base_Types::Integer;
+			timestamp_public_keys: data KeyList.impl; 
+			timestamp_threshold_signatures: data Base_Types::Integer;
+	end RootMetadata.impl;
+
+	data TargetsMetadata
+	end TargetsMetadata;
+	
+	data ReleaseCounterList
+	end ReleaseCounterList;
+	
+	data HardwareIdList
+	end HardwareIdList;
+	
+	data implementation HardwareIdList.impl
+		subcomponents
+			hardware_id_one: data Base_Types::Integer;
+			hardware_id_two: data Base_Types::Integer;
+			hardware_id_three: data Base_Types::Integer;
+	end HardwareIdList.impl;
+
+	data implementation ReleaseCounterList.impl
+		subcomponents
+			release_counter_one: data Base_Types::Integer;
+			release_counter_two: data Base_Types::Integer;
+			release_counter_three: data Base_Types::Integer;
+	end ReleaseCounterList.impl;
+
+	data implementation TargetsMetadata.impl
+		subcomponents
+			common_payload: data CommonPayload.impl;
+			image_filenames: data FilenameList.impl;
+			image_hashes: data HashList.impl;
+			image_file_sizes: data FileSizeList.impl;
+			release_counters: data ReleaseCounterList.impl;
+			hardware_ids: data HardwareIdList.impl;
+			ecu_ids: data EcuIdList.impl;
+	end TargetsMetadata.impl;
+	
+	--data ImageMetadata
+	--end ImageMetadata;
+	
+	--data implementation ImageMetadata.impl
+		--subcomponents
+			--filename: data Base_Types::Integer;
+			--hash: data Base_Types::Integer;
+			--length: data Base_Types::Integer;
+			--release_counter: data Base_Types::Integer;
+	--end ImageMetadata.impl;
+
+	data SnapshotMetadata
+	end SnapshotMetadata;
+
+	data implementation SnapshotMetadata.impl
+		subcomponents
+			common_payload: data CommonPayload.impl;
+			targets_filenames: data FilenameList.impl;
+			targets_version_numbers: data VersionNumberList.impl;
+			hashes: data HashList.impl;
+	end SnapshotMetadata.impl;
+
+	data TimestampMetadata
+	end TimestampMetadata;
+
+	data implementation TimestampMetadata.impl
+		subcomponents
+			common_payload: data CommonPayload.impl;
+			latest_snapshot_filename: data Base_Types::Integer;
+			latest_snapshot_version: data Base_Types::Integer;
+			latest_snapshot_hashes: data HashList.impl;
+	end TimestampMetadata.impl;
+
+	data Metadata
+	end Metadata;
+
+	data implementation Metadata.impl
+		subcomponents
+			root_metadata: data RootMetadata.impl;
+			targets_metadata: data TargetsMetadata.impl;
+			snapshot_metadata: data SnapshotMetadata.impl;
+			timestamp_metadata: data TimestampMetadata.impl;
+	end Metadata.impl;
+	
+	data MetadataRequest
+	end MetadataRequest;
+
+	data implementation MetadataRequest.impl
+		subcomponents
+			root_metadata: data Base_Types::Boolean;
+			targets_metadata: data Base_Types::Boolean;
+			snapshot_metadata: data Base_Types::Boolean;
+			timestamp_metadata: data Base_Types::Boolean;
+	end MetadataRequest.impl;
+
+	--- IMAGES ---
+	data Image
+	end Image;
+
+	data implementation Image.impl
+		subcomponents
+			bundle: data Base_Types::Integer; -- Model feature
+			version: data Base_Types::Integer; -- Model feature (?)
+			filename: data Base_Types::Integer; 
+			length: data Base_Types::Integer; -- Model feature
+			hash: data Base_Types::Integer; 
+			encrypted: data Base_Types::Boolean;
+			contents: data Base_Types::Integer;
+	end Image.impl;
+
+	data ImageSet
+	end ImageSet;
+
+	data implementation ImageSet.impl
+		subcomponents
+			image_one: data Image.impl;
+			image_two: data Image.impl;
+			image_three: data Image.impl;
+			image_four: data Image.impl;
+			image_five: data Image.impl;
+	end ImageSet.impl;
+	
+	
+	data ImageBundle
+	end ImageBundle;
+	
+	data implementation ImageBundle.impl
+		subcomponents
+			image_one: data Image.impl;
+			image_two: data Image.impl;
+	end ImageBundle.impl;
+
+	--- ECU AND VEHICLE INFORMATION ---
+	data EcuVersionReport
+	end EcuVersionReport;
+	
+	data implementation EcuVersionReport.impl
+		subcomponents
+			signature: data Base_Types::Integer;
+			hash: data Base_Types::Integer;
+			signature_key: data Base_Types::Integer;
+			ecu_id: data Base_Types::Integer;
+			image_filename: data Base_Types::Integer;
+			image_hash: data Base_Types::Integer;
+			image_length: data Base_Types::Integer;
+			latest_time: data Base_Types::Integer;
+			nonce: data Base_Types::Integer;
+			-- The standard includes more fine-grained attack detection, but I use this
+			-- for ease of modeling.
+			attack_detected: data Base_Types::Boolean;
+	end EcuVersionReport.impl;
+
+	data VehicleVersionManifest
+	end VehicleVersionManifest;
+
+	data implementation VehicleVersionManifest.impl
+		subcomponents
+			signature: data Base_Types::Integer;
+			signature_key: data Base_Types::Integer;
+			hash: data Base_Types::Integer;
+			--vehicle_id: data Base_Types::Integer;
+			--primary_ecu_id: data Base_Types::Integer;
+			report_one: data EcuVersionReport.impl;
+			report_two: data EcuVersionReport.impl;
+			--report_three: data EcuVersionReport.impl;
+	end VehicleVersionManifest.impl;
+	
+	data InventoryDatabaseEntry
+	end InventoryDatabaseEntry;
+	
+	data implementation InventoryDatabaseEntry.impl
+		subcomponents
+			vehicle_id: data Base_Types::Integer;
+			ecu_id: data Base_Types::Integer;
+			ecu_key: data Base_Types::Integer;
+			--ecu_type: data EcuType;
+	end InventoryDatabaseEntry.impl;
+	
+	--- TIME ---
+	--data NonceList
+	--end NonceList;
+
+	--data implementation NonceList.impl
+		--subcomponents
+			--nonce_one: data Base_Types::Integer;
+			--nonce_two: data Base_Types::Integer;
+	--end NonceList.impl;
+	
+	--data TimeRequest
+	--end TimeRequest;
+	
+	--data implementation TimeRequest.impl
+		--subcomponents
+			--nonces: data NonceList.impl;
+			--request: data Base_Types::Boolean;
+	--end TimeRequest.impl;
+	
+	data TimeServerToPrimary
+	end TimeServerToPrimary;
+	
+	data implementation TimeServerToPrimary.impl
+		subcomponents
+			current_time: data Base_Types::Integer;
+	end TimeServerToPrimary.impl;
+
+	data VerificationStage
+		properties
+			Data_Model::Data_Representation => Enum;
+	  	Data_Model::Enumerators => ("ROOT_DIRECTOR", "TIMESTAMP_DIRECTOR", "SNAPSHOT_DIRECTOR", "TARGETS_DIRECTOR",
+			                            "ROOT_IMAGE", "TIMESTAMP_IMAGE", "SNAPSHOT_IMAGE", "TARGETS_IMAGE", 
+																	"VERIFICATION_SUCCESS", "VERIFICATION_FAILURE");
+	end VerificationStage;
+	
+end Data_Types;
