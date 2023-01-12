@@ -1,17 +1,8 @@
 -- TODO
---   1. Figure out probes
---	 2. Fill out guarantees (see comments at the end of individual components)
---	 3. Possibly add more constraints on initialization
---   4. Trim down model
---   5. Fill out second secondary ECU
---   6. Look into "SHOULD" parts of the protocol (and use an optional flag for their inclusion)
+--	 1. Fill out guarantees (see comments at the end of individual components)
+--   2. Trim down model
+--   3. Look into "SHOULD" parts of the protocol 
 
--- ORDER OF ANALYSIS
---  1. Arbitrary software
---  2. Partial bundle / mixed bundle
---  3. Rollback
---  4. Freeze
---  Other attacks (eavesdrop, drop-request, endless data) are either trivial or outside of scope
 package Uptane
 
 public
@@ -20,22 +11,6 @@ public
 	with Agree_Nodes;
 	with Agree_Constants;
 	with CASE_Consolidated_Properties;
-
-	-----------------------------------------
-	--------- OEM ---------------------------
-	-----------------------------------------
-	--system Oem
-		--features
-			-- Inputs
-			
-			-- Outputs
-			--out_image: out data port Data_Types::OemToImage.impl;
-			
-			-- Assumes and Guarantees
-			--annex agree {**
-
-			--**};
-	--end Oem;
 
 	-----------------------------------------
 	--------- DIRECTOR REPOSITORY -----------
@@ -110,7 +85,6 @@ public
 					Agree_Nodes::Compatible3(out_primary.metadata.targets_metadata.image_filenames.filename_one, 
 																	 out_primary.metadata.targets_metadata.image_filenames.filename_two,
 																	 out_primary.metadata.targets_metadata.image_filenames.filename_three);
-					--true;
 					
 				-- SHOULD
 				guarantee "The Director makes sure that each image is compatible with its corresponding ECU": 
@@ -157,9 +131,8 @@ public
 					Agree_Nodes::AuthoredByOem(out_primary.metadata.targets_metadata.image_hashes.hash_one) and
 					Agree_Nodes::AuthoredByOem(out_primary.metadata.targets_metadata.image_hashes.hash_two);
 
-				-- Might want new images/metadata to be dependent on information from the manifest
-
-				-- Might need access to the initializing ImageSet
+				-- Might want new images/metadata to be dependent on information from the manifest.
+				-- But, this is not actually part of the standard.
 			**};
 	end DirectorRepo;
 
@@ -243,7 +216,6 @@ public
 						((out_primary.image.hash = pre (out_primary.image.hash)) => out_primary.image = pre (out_primary.image)) and
 						((out_primary.image_secondary.hash = pre (out_primary.image_secondary.hash)) => out_primary.image_secondary = pre (out_primary.image_secondary))
 					);
-					--true;
 
 				-- SHOULD
 				guarantee "Metadata file version numbers are incremented when the file is updated":
@@ -261,10 +233,6 @@ public
 					);
 
 				-- May need to include additional guarantees on the metadata or images
-
-				-- May need additional initialization guarantees
-
-				-- Might need to pull images from an image set, possibly coming from another component
 			**};
 	end ImageRepo;
 
@@ -318,9 +286,8 @@ public
 				eq initial_image: Data_Types::Image.impl = initialization.primary_image -> pre (initial_image);
 				eq current_time: int = in_time_server.current_time;
 				eq most_recent_secondary_report: Data_Types::EcuVersionReport.impl = initialization.report_two -> (if pre (in_secondary.report_present) then pre (in_secondary.ecu_version_report) else pre (most_recent_secondary_report));
-				-- UPDATE THIS AFTER DOING VERIFICATION
-				eq attack_detected: bool = false; --(false -> (pre (in_primary.metadata_present.targets_metadata))) and
-														             -- not new_metadata_verified;
+				-- Currently punting on attack detection
+				eq attack_detected: bool = false; 
 				eq previous_nonce: int = 0 -> if pre (out_director.manifest_present) 
 																			then pre (out_director.manifest.report_one.nonce) 
 																			else pre (previous_nonce);
@@ -842,8 +809,6 @@ public
 																			else pre (previous_nonce);
 				eq current_time: int = 0 -> (if in_primary.time_present then in_primary.current_time else pre (current_time));
 				eq new_targets: Data_Types::TargetsMetadata.impl = in_primary.metadata.targets_metadata;
-
-				-- UPDATE THIS
 				eq current_targets: Data_Types::TargetsMetadata.impl = verified_metadata_secondary.targets_metadata;
 				eq previous_targets: Data_Types::TargetsMetadata.impl = initialization.metadata_d.targets_metadata -> 
 				                                                        (if new_metadata_verified then pre (verified_metadata_secondary.targets_metadata) 
@@ -962,11 +927,6 @@ public
 						verified_metadata_secondary.timestamp_metadata = pre (verified_metadata_secondary.timestamp_metadata) and
 						verified_metadata_secondary.snapshot_metadata = pre (verified_metadata_secondary.snapshot_metadata)
 					);
-
-				-- The standard includes more fine-grained attack detection, but I use this
-				-- for ease of modeling. (include attack detection in partial verification)
-
-				-- Include something about decryption in image verification
 			**};
 	end SecondaryECU;
 
@@ -1004,8 +964,6 @@ public
 																			else pre (previous_nonce);
 				eq current_time: int = 0 -> (if in_primary.time_present then in_primary.current_time else pre (current_time));
 				eq new_targets: Data_Types::TargetsMetadata.impl = in_primary.metadata.targets_metadata;
-
-				-- UPDATE THIS
 				eq current_targets: Data_Types::TargetsMetadata.impl = verified_metadata_secondary.targets_metadata;
 				eq previous_targets: Data_Types::TargetsMetadata.impl = initialization.metadata_d.targets_metadata -> 
 				                                                        (if new_metadata_verified then pre (verified_metadata_secondary.targets_metadata) 
@@ -1025,12 +983,10 @@ public
 					(false -> (current_targets.image_hashes.hash_three	= pre (in_primary.image.hash))); 
 
 				eq new_metadata_verified: bool = false -> (
-					-- There is new incoming targets metadata
-					-- MIGHT BE AN ISSUE-- FOR SOME REASON ISN'T TRUE WHEN I EXPECT
+					-- There is new incoming targets metadataT
 					(in_primary.metadata_present.targets_metadata) and
 					-- The new Targets metadata reaches the threshold count of valid signatures
 					verified_metadata_secondary.root_metadata.targets_threshold_signatures <= 2 and
-					-- MIGHT BE AN ISSUE IF PRIMARY HAS NEW ROOT METADATA
 					Agree_Nodes::Match((new_targets.common_payload.signatures.signature_one), 
 														 (new_targets.common_payload.hash),
 														 verified_metadata_secondary.root_metadata.targets_public_keys.key_one) and
@@ -1124,11 +1080,6 @@ public
 						verified_metadata_secondary.timestamp_metadata = pre (verified_metadata_secondary.timestamp_metadata) and
 						verified_metadata_secondary.snapshot_metadata = pre (verified_metadata_secondary.snapshot_metadata)
 					);
-
-				-- The standard includes more fine-grained attack detection, but I use this
-				-- for ease of modeling. (include attack detection in partial verification)
-
-				-- Include something about decryption in image verification
 			**};
 	end SecondaryECU2;
 	
@@ -1167,9 +1118,6 @@ public
 		features
 			-- Initialization
 			initialization: in data port Data_Types::InitializationBus.impl;
-
-			-- Model inputs
-			--in_images: in data port Data_Types::ImageSet.impl;
 			
 			-- Model outputs
 			installed_image_primary: out data port Data_Types::Image.impl;
@@ -1192,7 +1140,6 @@ public
 
 			-- Assumes and Guarantees
 			annex agree {**
-				--eq image_set: Data_Types::ImageSet.impl = in_images -> pre (image_set);
 				eq hardware_id_primary: int = initialization.hardware_id_one -> pre (hardware_id_primary);
 				eq hardware_id_secondary: int = initialization.hardware_id_two -> pre (hardware_id_secondary);
 
@@ -1213,7 +1160,6 @@ public
 					Agree_Nodes::AuthoredByOem(initialization.secondary_image2.hash) and
 					Agree_Nodes::AuthoredByOem(initialization.metadata_d.targets_metadata.image_hashes.hash_one) and
 					Agree_Nodes::AuthoredByOem(initialization.metadata_d.targets_metadata.image_hashes.hash_two);
-					--true;
 
 				assume "The ECUs are initialized with compatible images and targets metadata for compatible images":
 					Agree_Nodes::Compatible3(initialization.primary_image.filename, 
@@ -1222,12 +1168,10 @@ public
 					Agree_Nodes::Compatible3(initialization.metadata_d.targets_metadata.image_filenames.filename_one, 
 					                        initialization.metadata_d.targets_metadata.image_filenames.filename_two,
 																	initialization.metadata_d.targets_metadata.image_filenames.filename_three);
-					--true;
 
 				assume "The ECUs are initialized with valid targets metadata":
 					initialization.metadata_d.targets_metadata.hardware_ids.hardware_id_one = initialization.hardware_id_one and
 					initialization.metadata_d.targets_metadata.hardware_ids.hardware_id_two = initialization.hardware_id_two;
-					--true;
 
 				---------------------------
 				--- SECURITY GUARANTEES ---
@@ -1235,34 +1179,16 @@ public
 				-- Functionality (endless data): The ECU never runs out of storage/memory. 
 				-- Not modeling memory.
 
-				-- Functionality (arbitrary software)
-				-- In other words, all images come from the Image Repo
-				guarantee "The ECU never downloads an attacker-authored software image: part A.":
-					--Agree_Nodes::AuthoredByOem(installed_image_primary.hash);
-					true;
-				guarantee "The ECU never downloads an attacker-authored software image: part B.":
-					--Agree_Nodes::AuthoredByOem(installed_image_secondary.hash);
-					true;
-				--guarantee "The ECU never downloads an attacker-authored software image: part C.":
-					--(
-						--(installed_image_secondary2 = image_set.image_one) or
-						--(installed_image_secondary2 = image_set.image_two) or
-						--(installed_image_secondary2 = image_set.image_three) or
-						--(installed_image_secondary2 = image_set.image_four) or
-						--(installed_image_secondary2 = image_set.image_five)
-					--);
+				-- Eavesdrop
+				-- Attack is trivially possible (no confidentiality guarantees)
 
-				-- Deny (freeze)
-				-- Expand this for all types of metadata if necessary
-				guarantee "The ECUs never verify expired metadata: part A.":
-				--true -> (
-					--(
-						--(verified_metadata_primary_d.root_metadata <> pre (verified_metadata_primary_d.root_metadata)) =>
-						--(verified_metadata_primary_d.root_metadata.common_payload.expiration >= 
-						--probe_time_server)
-					--);
-					true;
-				guarantee "The ECUs never verify expired metadata: part B.":
+				-- Drop-request
+				-- Attack is trivially possible (no availability guarantees)
+
+				-- Partial bundle installation
+				-- Attack is trivially possible (no availability guarantees)
+
+				guarantee "Freeze":
 				--true -> (
 					--(
 						--(verified_metadata_secondary.targets_metadata <> pre (verified_metadata_secondary.targets_metadata)) =>
@@ -1270,58 +1196,38 @@ public
 						--probe_time_server)
 					--);
 					true;
-				--guarantee "The ECUs never verify expired metadata: part C.":
-				--true -> (
-					--(
-						--(verified_metadata_secondary2.root_metadata <> pre (verified_metadata_secondary2.root_metadata)) =>
-						--(verified_metadata_secondary2.root_metadata.common_payload.expiration > 
-						--probe_time_server)
-					--);
-				--);
 
-				-- Functionality (rollback)
-				-- Slow
-				-- This formulation is not fully general, as it allows situations where the ECU
-				-- switches from filename A to filename B, and then back to filename
-				-- A with a lower version.
-				guarantee "The ECU never downgrades image version: part A.":
-					--(true -> (installed_image_primary.version >= pre (installed_image_primary.version)));
-					true;
-				guarantee "The ECU never downgrades image version: part B.":
-					--(true -> (installed_image_secondary.version >= pre (installed_image_secondary.version))); 
-					true;
-				--guarantee "The ECU never downgrades image version: part C.":
-					--true -> ((installed_image_secondary2.version >= pre (installed_image_secondary2.version)));
-					--true;
-
-				-- Functionality (image and ECU incompatible)
-				-- Slow 
-				guarantee "The ECUs never install incompatible images: part A.":
-					--Agree_Nodes::Compatible(installed_image_primary.filename, hardware_id_primary);
-					true;
-				guarantee "The ECUs never install incompatible images: part B.":
-					--Agree_Nodes::Compatible(installed_image_secondary.filename, hardware_id_secondary);
-					true;
-
-				-- Functionality (mix and match, mixed bundles)
-				-- Slow
-				guarantee "The ECUs never install mutually incompatible images.":
+				guarantee "Mixed-bundles":
 					((ecu_software_version_primary = ecu_software_version_secondary1) and
 					(ecu_software_version_primary = ecu_software_version_secondary2)) =>
 					(
 						Agree_Nodes::Compatible3(installed_image_primary.filename,
 					                           installed_image_secondary.filename,
 																		 installed_image_secondary2.filename)
-						--true
 					);
-					--true;
 
-				-- Deny (partial bundle) 
-				-- Slow
-				-- This is an availability guarantee and can't be promised anyway
-				guarantee "The ECUs always install a complete software bundle.":
-					--true -> (ecu_software_version_secondary1 = (pre (ecu_software_version_primary)));
+				-- Mix-and-match
+				-- Targets metadata has a bad bundle
+
+				guarantee "Rollback":
+					--(true -> (installed_image_secondary.version >= pre (installed_image_secondary.version))); 
 					true;
+
+				-- Arbitrary software
+				guarantee "Arbitrary software":
+					--Agree_Nodes::AuthoredByOem(installed_image_secondary.hash);
+					true;
+
+				-- Faulty bundle
+				-- Director verifies bad VVM and is therefore susceptible to choosing a flawed new bundle of images
+
+
+				-- OTHER ATTACKS
+
+				-- Image and ECU incompatible based on ECU hardware ID
+				--guarantee "Image incompatible with ECU":
+					--Agree_Nodes::Compatible(installed_image_secondary.filename, hardware_id_secondary);
+					--true;
 
 				---------------
 				--- TESTING ---
@@ -1337,74 +1243,6 @@ public
 					--true -> (verified_metadata_secondary.targets_metadata = pre (verified_metadata_secondary.targets_metadata));
 				--guarantee "Verification stage X is not reachable":
 					--verification_stage_primary <> Agree_Constants::TARGETS_I;
-
-				--------------
-				--- LEMMAS ---
-				--------------
-				-- Including these lemmas helps Kind 2 prove our security guarantees
-				guarantee "LEMMA: The ECU software version goes up one at a time":
-					--(ecu_software_version_primary = (0 -> pre (ecu_software_version_primary)) or
-					--ecu_software_version_primary = (0 -> pre (ecu_software_version_primary) + 1))
-					--and
-					--(ecu_software_version_secondary1 = (0 -> pre (ecu_software_version_secondary1)) or
-					--ecu_software_version_secondary1 = (0 -> pre (ecu_software_version_secondary1) + 1));
-					true;
-
-				-- SLOW
-				--guarantee "LEMMA: The image version number matches the targets metadata":
-					--true -> (
-						--(installed_image_primary <> pre (installed_image_primary)) =>
-						--(installed_image_primary.version = verified_metadata_primary_d.targets_metadata.release_counters.release_counter_one)
-					--);
-
-				guarantee "LEMMA: Installing a new image means the software version goes up":
-					--true -> (
-						--(installed_image_primary <> pre (installed_image_primary)) =>
-						--(ecu_software_version_primary = (pre (ecu_software_version_primary) + 1))
-					--);
-					true;
-
-				-- SLOW
-				--guarantee "LEMMA: ECUs only verify new images that are compatible with their hardware ids.":
-					--true -> (
-						--(ecu_software_version_primary = (pre (ecu_software_version_primary) + 1) =>
-						--Agree_Nodes::Compatible(verified_metadata_primary_d.targets_metadata.image_filenames.filename_one, hardware_id_primary)
-					--);
-
-				guarantee "LEMMA: The image filename matches the targets metadata":
-					--true -> (
-						--(installed_image_primary <> pre (installed_image_primary)) =>
-						--(installed_image_primary.filename = verified_metadata_primary_d.targets_metadata.image_filenames.filename_one)
-					--);
-					true;
-
-				guarantee "LEMMA: Matching filenames implies matching version numbers":
-					--true -> (
-						--((installed_image_primary <> pre (installed_image_primary)) and
-						--(installed_image_primary.filename = verified_metadata_primary_d.targets_metadata.image_filenames.filename_one)) =>
-						--(installed_image_primary.version = verified_metadata_primary_d.targets_metadata.release_counters.release_counter_one)
-					--);
-				true;
-
-				guarantee "LEMMA: New image means targets metadata release counter is non-decreasing"
-					--true -> (
-						--(installed_image_primary <> pre (installed_image_primary)) =>
-						--(verified_metadata_primary_d.targets_metadata.release_counters.release_counter_one >= pre (installed_image_primary.version))
-					--);
-					true;
-				-- SLOW
-				--guarantee "Verification success implies targets metadata has compatible images":
-					--(verification_stage_primary = Agree_Constants::VERIFY_SUCCESS) =>
-					--Agree_Nodes::Compatible(verified_metadata_primary_d.targets_metadata.image_filenames.filename_one,
-																  --hardware_id_primary);
-
-				guarantee "LEMMA: Verification success implies targets metadata matches latest targets director":
-					--(verification_stage_primary = Agree_Constants::VERIFY_SUCCESS) =>
-					--(verified_metadata_primary_d.targets_metadata.image_filenames.filename_one = latest_targets_director_primary.image_filenames.filename_one);
-					true;
-
-				guarantee "Test guarantee: complete bundles are installed":
-					true;
 			**};
 	end UptaneSystem;
 	
