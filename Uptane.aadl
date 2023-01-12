@@ -1198,16 +1198,20 @@ public
 					true;
 
 				guarantee "Mixed-bundles":
-					((ecu_software_version_primary = ecu_software_version_secondary1) and
-					(ecu_software_version_primary = ecu_software_version_secondary2)) =>
-					(
-						Agree_Nodes::Compatible3(installed_image_primary.filename,
-					                           installed_image_secondary.filename,
-																		 installed_image_secondary2.filename)
-					);
+					--((ecu_software_version_primary = ecu_software_version_secondary1) and
+					--(ecu_software_version_primary = ecu_software_version_secondary2)) =>
+					--(
+						--Agree_Nodes::Compatible3(installed_image_primary.filename,
+					                           --installed_image_secondary.filename,
+																		 --installed_image_secondary2.filename)
+					--);
+					true;
 
-				-- Mix-and-match
-				-- Targets metadata has a bad bundle
+				guarantee "Mix-and-match":
+					--Agree_Nodes::Compatible3(verified_metadata_primary_d.targets_metadata.image_filenames.filename_one,
+																	 --verified_metadata_primary_d.targets_metadata.image_filenames.filename_two,
+																	 --verified_metadata_primary_d.targets_metadata.image_filenames.filename_three);
+					true;
 
 				guarantee "Rollback":
 					--(true -> (installed_image_secondary.version >= pre (installed_image_secondary.version))); 
