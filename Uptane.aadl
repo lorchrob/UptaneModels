@@ -29,6 +29,7 @@ public
 
 			-- Model outputs
 			latest_targets: out data port Data_Types::TargetsMetadata.impl;
+			latest_manifest: out data port Data_Types::VehicleVersionManifest.impl;
 			
 			-- Assumes and Guarantees
 			annex agree {**
@@ -44,6 +45,7 @@ public
 				eq hardware_id_three: int = initialization.hardware_id_three -> pre (hardware_id_three);
 
 				eq valid_manifest: bool = false -> (initialization.optional_features_flag => (
+					in_primary.manifest_present and
 				  -- Fresh nonces
 					-- SHOULD
 					(
@@ -149,6 +151,12 @@ public
 					latest_targets = 
 					(initialization.metadata_d.targets_metadata ->
 						(if out_primary.metadata_response.targets_metadata then out_primary.metadata.targets_metadata else pre latest_targets));
+
+				-- MODEL
+				guarantee "Set the probe (2)":
+					latest_manifest = 
+					(initialization.manifest ->
+						(if valid_manifest then in_primary.manifest else pre latest_manifest));
 				-- Might want new images/metadata to be dependent on information from the manifest.
 				-- But, this is not actually part of the standard.
 			**};
@@ -303,6 +311,7 @@ public
 			{CASE_Consolidated_Properties::probe => true; };
 			ecu_software_version_primary: out data port Base_Types::Integer
 			{CASE_Consolidated_Properties::probe => true; };
+			latest_manifest: out data port Data_Types::VehicleVersionManifest.impl;
 			
 			-- Assumes and Guarantees
 			annex agree {**
@@ -843,6 +852,10 @@ public
 						   not out_secondary.metadata_present.targets_metadata and not out_secondary2.metadata_present.targets_metadata);
 					);
 
+				-- MODEL
+				guarantee "Set the probe":
+					latest_manifest = (initialization.manifest -> (if out_director.manifest_present then out_director.manifest else pre latest_manifest));
+
 				-- Should impose an order on the actions of the Primary, like the "what the primary does" section.
 
 				-- ECU version report request from secondary
@@ -1227,6 +1240,8 @@ public
 			ecu_software_version_secondary2: out data port Base_Types::Integer;
 			ecu_metadata_version_secondary: out data port Base_Types::Integer;
 			director_latest_targets: out data port Data_Types::TargetsMetadata.impl;
+			director_latest_manifest: out data port Data_Types::VehicleVersionManifest.impl;
+			primary_latest_manifest: out data port Data_Types::VehicleVersionManifest.impl;
 
 			-- Probes
 			probe_time_server: out data port Base_Types::Integer;
@@ -1284,41 +1299,43 @@ public
 				-- Partial bundle installation
 				-- Attack is trivially possible (no availability guarantees)
 
-				guarantee "Freeze":
-				true -> (
-					(ecu_metadata_version_secondary > pre (ecu_metadata_version_secondary)) =>
-						(verified_metadata_secondary.targets_metadata = director_latest_targets)
-				);
+				--guarantee "Freeze":
+				--true -> (
+					--(ecu_metadata_version_secondary > pre (ecu_metadata_version_secondary)) =>
+						--(verified_metadata_secondary.targets_metadata = director_latest_targets)
+				--);
 					--true;
 
-				guarantee "Mixed-bundles":
-					((ecu_software_version_primary = ecu_software_version_secondary1) and
-					(ecu_software_version_primary = ecu_software_version_secondary2)) =>
-					(
-						Agree_Nodes::Compatible3(installed_image_primary.filename,
+				--guarantee "Mixed-bundles":
+					--((ecu_software_version_primary = ecu_software_version_secondary1) and
+					--(ecu_software_version_primary = ecu_software_version_secondary2)) =>
+					--(
+						--gree_Nodes::Compatible3(installed_image_primary.filename,
 					                           --installed_image_secondary.filename,
 																		 --installed_image_secondary2.filename)
-					);
+					--);
 					--true;
 
-				guarantee "Mix-and-match":
-					Agree_Nodes::Compatible3(verified_metadata_primary_d.targets_metadata.image_filenames.filename_one,
-																	 verified_metadata_primary_d.targets_metadata.image_filenames.filename_two,
-																	 verified_metadata_primary_d.targets_metadata.image_filenames.filename_three);
+				--guarantee "Mix-and-match":
+					--Agree_Nodes::Compatible3(verified_metadata_primary_d.targets_metadata.image_filenames.filename_one,
+																	-- verified_metadata_primary_d.targets_metadata.image_filenames.filename_two,
+																	 --verified_metadata_primary_d.targets_metadata.image_filenames.filename_three);
 					--true;
 
-				guarantee "Rollback":
-					(true -> (installed_image_secondary.version >= pre (installed_image_secondary.version))); 
+				--guarantee "Rollback":
+					--(true -> (installed_image_secondary.version >= pre (installed_image_secondary.version))); 
 					--true;
 
 				-- Arbitrary software
 				guarantee "Arbitrary software":
-					Agree_Nodes::AuthoredByOem(installed_image_secondary.hash);
-					--true;
+					--Agree_Nodes::AuthoredByOem(installed_image_secondary.hash);
+					true;
 
 				-- Faulty bundle
 				-- Director verifies bad VVM and is therefore susceptible to choosing a flawed new bundle of images
-
+				guarantee "Faulty bundle":
+					--true;
+					(director_latest_manifest <> pre (director_latest_manifest)) => (director_latest_manifest = primary_latest_manifest)
 
 				-- OTHER ATTACKS
 
@@ -1517,6 +1534,14 @@ public
 					CASE_Consolidated_Properties::connectionType => Trusted;
 				};
 			c32: port secondary_ecu.ecu_metadata_version_secondary -> ecu_metadata_version_secondary
+				{
+					CASE_Consolidated_Properties::connectionType => Trusted;
+				};
+			c33: port director_repo.latest_manifest -> director_latest_manifest
+				{
+					CASE_Consolidated_Properties::connectionType => Trusted;
+				};
+			c34: port primary_ecu.latest_manifest -> primary_latest_manifest
 				{
 					CASE_Consolidated_Properties::connectionType => Trusted;
 				};

@@ -36,14 +36,12 @@ public
 			i = if b then 1 else 0;
 		tel;
 		
-		-- "Bogus" predicate for a digital signature X with matching the hashed payload Y with
-		-- public key Z
+		-- Bogus/abstract predicates
 		node Match(X: int, Y: int, Z: int) returns (B: bool);
 		let
 			B = (Y + Z) - 5 <= X and X <= (Y + Z) + 5;
 		tel;
 
-		-- "Bogus" predicate for two images being compatible
 		node Compatible(X: int, Y: int) returns (Z: bool);
 		let
 			Z = Y - 5 <= X and X <= Y + 5;
@@ -58,13 +56,5 @@ public
 		let
 			Z = (X >= 0);
 		tel;
-
-		node ChangesEvery20 (x: Data_Types::Image.impl) returns (Z: bool);
-		let			
-		Z = true -> pre (true -> pre (true -> pre (true -> pre (true -> pre (true -> 
-		            pre (true -> pre (true -> pre (true -> pre (true -> pre (true -> 
-								pre (true -> pre (true -> pre (true -> pre (true -> pre (true -> 
-								pre (true -> pre (true -> pre (true -> pre (true -> (x <> pre (x)))))))))))))))))))));
-		tel
 	**};
 end Agree_Nodes;
