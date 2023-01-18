@@ -194,11 +194,10 @@ public
 
 	data implementation Image.impl
 		subcomponents
-			bundle: data Base_Types::Integer; -- Model feature
-			version: data Base_Types::Integer; -- Model feature 
+			bundle: data Base_Types::Integer; 
+			version: data Base_Types::Integer; 
 			filename: data Base_Types::Integer; 
-			length: data Base_Types::Integer; -- Model feature
-			encrypted: data Base_Types::Boolean;
+			length: data Base_Types::Integer; 
 			contents: data Base_Types::Integer;
 	end Image.impl;
 
