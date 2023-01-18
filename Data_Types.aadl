@@ -36,11 +36,11 @@ public
 	data implementation PrimaryToImage.impl
 		subcomponents
 			image_filename: data Base_Types::Integer;
-			image_hash: data Base_Types::Integer;
+			image_hash: data Data_Types::Image.impl;
 			image_filename_secondary: data Base_Types::Integer;
 			image_filename_secondary2: data Base_Types::Integer;
-			image_hash_secondary: data Base_Types::Integer;
-			image_hash_secondary2: data Base_Types::Integer;
+			image_hash_secondary: data Data_Types::Image.impl;
+			image_hash_secondary2: data Data_Types::Image.impl;
 			metadata_request: data MetadataRequest.impl;
 			image_request: data Base_Types::Boolean;
 	end PrimaryToImage.impl;
@@ -112,7 +112,6 @@ public
 			filename: data Base_Types::Integer; 
 			signatures: data SignatureList.impl;
 			signature_keys: data KeyList.impl;
-			hash: data Base_Types::Integer;
 	end CommonPayload.impl;
 
 	data RootMetadata
@@ -138,7 +137,7 @@ public
 		subcomponents
 			common_payload: data CommonPayload.impl;
 			image_filenames: data FilenameList.impl;
-			image_hashes: data HashList.impl;
+			image_hashes: data ImageHashList.impl;
 			image_file_sizes: data FileSizeList.impl;
 			release_counters: data ReleaseCounterList.impl;
 			hardware_ids: data HardwareIdList.impl;
@@ -153,7 +152,7 @@ public
 			common_payload: data CommonPayload.impl;
 			targets_filenames: data FilenameList.impl;
 			targets_version_numbers: data VersionNumberList.impl;
-			hashes: data HashList.impl;
+			targets_hashes: data TargetsHashList.impl;
 	end SnapshotMetadata.impl;
 
 	data TimestampMetadata
@@ -164,7 +163,7 @@ public
 			common_payload: data CommonPayload.impl;
 			latest_snapshot_filename: data Base_Types::Integer;
 			latest_snapshot_version: data Base_Types::Integer;
-			latest_snapshot_hashes: data HashList.impl;
+			latest_snapshot_hash: data SnapshotMetadata.impl;
 	end TimestampMetadata.impl;
 
 	data Metadata
@@ -199,7 +198,6 @@ public
 			version: data Base_Types::Integer; -- Model feature 
 			filename: data Base_Types::Integer; 
 			length: data Base_Types::Integer; -- Model feature
-			hash: data Base_Types::Integer; 
 			encrypted: data Base_Types::Boolean;
 			contents: data Base_Types::Integer;
 	end Image.impl;
@@ -211,11 +209,10 @@ public
 	data implementation EcuVersionReport.impl
 		subcomponents
 			signature: data Base_Types::Integer;
-			hash: data Base_Types::Integer;
 			signature_key: data Base_Types::Integer;
 			ecu_id: data Base_Types::Integer;
 			image_filename: data Base_Types::Integer;
-			image_hash: data Base_Types::Integer;
+			image_hash: data Data_Types::Image.impl;
 			image_length: data Base_Types::Integer;
 			latest_time: data Base_Types::Integer;
 			nonce: data Base_Types::Integer;
@@ -228,7 +225,6 @@ public
 		subcomponents
 			signature: data Base_Types::Integer;
 			signature_key: data Base_Types::Integer;
-			hash: data Base_Types::Integer;
 			report_one: data EcuVersionReport.impl;
 			report_two: data EcuVersionReport.impl;
 			report_three: data EcuVersionReport.impl;
@@ -253,6 +249,27 @@ public
 	end VerificationStage;
 
 	-- LISTS --
+	data ImageHashList
+	end ImageHashList;
+
+	data implementation ImageHashList.impl
+		subcomponents
+			hash_one: data Data_Types::Image.impl;
+			hash_two: data Data_Types::Image.impl;
+			hash_three: data Data_Types::Image.impl;
+	end ImageHashList.impl;
+
+	data TargetsHashList
+	end TargetsHashList;
+
+	data implementation TargetsHashList.impl
+		subcomponents
+			hash_one: data Data_Types::TargetsMetadata.impl;
+			hash_two: data Data_Types::TargetsMetadata.impl;
+			hash_three: data Data_Types::TargetsMetadata.impl;
+	end TargetsHashList.impl;
+
+
 	data EcuVersionReportList
 	end EcuVersionReportList;
 	

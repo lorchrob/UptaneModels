@@ -67,10 +67,10 @@ public
 					-- Valid signatures
 					-- SHOULD
 					(					
-						Agree_Nodes::Match(pre (in_primary.manifest.signature), pre (in_primary.manifest.hash), primary_ecu_key) and
-						Agree_Nodes::Match(pre (in_primary.manifest.report_one.signature), pre (in_primary.manifest.report_one.hash), primary_ecu_key) and
-						Agree_Nodes::Match(pre (in_primary.manifest.report_two.signature), pre (in_primary.manifest.report_two.hash), secondary_ecu_key) and
-						Agree_Nodes::Match(pre (in_primary.manifest.report_three.signature), pre (in_primary.manifest.report_three.hash), secondary_ecu_key2)
+						Agree_Nodes::Match(pre (in_primary.manifest.signature), primary_ecu_key) and
+						Agree_Nodes::Match(pre (in_primary.manifest.report_one.signature), primary_ecu_key) and
+						Agree_Nodes::Match(pre (in_primary.manifest.report_two.signature), secondary_ecu_key) and
+						Agree_Nodes::Match(pre (in_primary.manifest.report_three.signature), secondary_ecu_key2)
 					)
 				));
 
@@ -103,7 +103,8 @@ public
 				guarantee "The Director makes sure that each image is compatible with its corresponding ECU": 
 					initialization.optional_features_flag => (
 						Agree_Nodes::Compatible(out_primary.metadata.targets_metadata.image_filenames.filename_one, hardware_id_one) and
-						Agree_Nodes::Compatible(out_primary.metadata.targets_metadata.image_filenames.filename_two, hardware_id_two)
+						Agree_Nodes::Compatible(out_primary.metadata.targets_metadata.image_filenames.filename_two, hardware_id_two) and
+						Agree_Nodes::Compatible(out_primary.metadata.targets_metadata.image_filenames.filename_three, hardware_id_three)
 					);
 
 				-- IMPLICIT ASSUMPTION
@@ -209,11 +210,11 @@ public
 				guarantee "The Image Repo sends the correct images based on the Primary's request":
 				true -> (
 					(out_primary.image.filename = (pre (in_primary.image_filename))) and
-					(out_primary.image.hash = (pre (in_primary.image_hash))) and
+					(Agree_Nodes::HashImg(out_primary.image) = (pre (in_primary.image_hash))) and
 					(out_primary.image_secondary.filename = pre (in_primary.image_filename_secondary)) and
-					(out_primary.image_secondary.hash = pre (in_primary.image_hash_secondary)) and
+					(Agree_Nodes::HashImg(out_primary.image_secondary) = pre (in_primary.image_hash_secondary)) and
 					(out_primary.image_secondary2.filename = pre (in_primary.image_filename_secondary2)) and
-					(out_primary.image_secondary2.hash = pre (in_primary.image_hash_secondary2))
+					(Agree_Nodes::HashImg(out_primary.image_secondary2) = pre (in_primary.image_hash_secondary2))
 				);
 
 				-- IMPLICIT ASSUMPTION
@@ -225,9 +226,9 @@ public
 					out_primary.image.filename = out_primary.metadata.targets_metadata.image_filenames.filename_one and
 					out_primary.image_secondary.filename = out_primary.metadata.targets_metadata.image_filenames.filename_two and
 					out_primary.image_secondary2.filename = out_primary.metadata.targets_metadata.image_filenames.filename_three and
-					out_primary.image.hash = out_primary.metadata.targets_metadata.image_hashes.hash_one and
-					out_primary.image_secondary.hash = out_primary.metadata.targets_metadata.image_hashes.hash_two and
-					out_primary.image_secondary2.hash = out_primary.metadata.targets_metadata.image_hashes.hash_three and
+					Agree_Nodes::HashImg(out_primary.image) = out_primary.metadata.targets_metadata.image_hashes.hash_one and
+					Agree_Nodes::HashImg(out_primary.image_secondary) = out_primary.metadata.targets_metadata.image_hashes.hash_two and
+					Agree_Nodes::HashImg(out_primary.image_secondary2) = out_primary.metadata.targets_metadata.image_hashes.hash_three and
 					out_primary.metadata.targets_metadata.hardware_ids.hardware_id_one = hardware_id_one and
 					out_primary.metadata.targets_metadata.hardware_ids.hardware_id_two = hardware_id_two and
 					out_primary.metadata.targets_metadata.hardware_ids.hardware_id_three = hardware_id_three;
@@ -237,23 +238,23 @@ public
 				-- issues even in the benign case. For example, one ECU might successfully update while the other
 				-- fails verification, leaving ECUs with incompatible images.
 				guarantee "All images are authored by a legitimate OEM":
-					Agree_Nodes::AuthoredByOem(out_primary.image.hash) and
-					Agree_Nodes::AuthoredByOem(out_primary.image_secondary.hash) and
-					Agree_Nodes::AuthoredByOem(out_primary.image_secondary2.hash) and
+					Agree_Nodes::AuthoredByOem(Agree_Nodes::HashImg(out_primary.image)) and
+					Agree_Nodes::AuthoredByOem(Agree_Nodes::HashImg(out_primary.image_secondary)) and
+					Agree_Nodes::AuthoredByOem(Agree_Nodes::HashImg(out_primary.image_secondary2)) and
 					Agree_Nodes::AuthoredByOem(out_primary.metadata.targets_metadata.image_hashes.hash_one) and
 					Agree_Nodes::AuthoredByOem(out_primary.metadata.targets_metadata.image_hashes.hash_two) and
 					Agree_Nodes::AuthoredByOem(out_primary.metadata.targets_metadata.image_hashes.hash_three);
 
 				-- SHALL
-				guarantee "The image hash uniquely identifies the image":
-					true -> (
-						out_primary.image.hash >= pre (out_primary.image.hash) and
-						out_primary.image_secondary.hash >= pre (out_primary.image_secondary.hash) and
-						out_primary.image_secondary2.hash >= pre (out_primary.image_secondary2.hash) and
-						((out_primary.image.hash = pre (out_primary.image.hash)) => out_primary.image = pre (out_primary.image)) and
-						((out_primary.image_secondary.hash = pre (out_primary.image_secondary.hash)) => out_primary.image_secondary = pre (out_primary.image_secondary)) and
-						((out_primary.image_secondary2.hash = pre (out_primary.image_secondary2.hash)) => out_primary.image_secondary2 = pre (out_primary.image_secondary2))
-					);
+				--guarantee "The image hash uniquely identifies the image":
+					--true -> (
+						--out_primary.image.hash >= pre (out_primary.image.hash) and
+						--out_primary.image_secondary.hash >= pre (out_primary.image_secondary.hash) and
+						--out_primary.image_secondary2.hash >= pre (out_primary.image_secondary2.hash) and
+						--((out_primary.image.hash = pre (out_primary.image.hash)) => out_primary.image = pre (out_primary.image)) and
+						--((out_primary.image_secondary.hash = pre (out_primary.image_secondary.hash)) => out_primary.image_secondary = pre (out_primary.image_secondary)) and
+						--((out_primary.image_secondary2.hash = pre (out_primary.image_secondary2.hash)) => out_primary.image_secondary2 = pre (out_primary.image_secondary2))
+					--);
 
 				-- SHOULD
 				guarantee "Metadata file version numbers are incremented when the file is updated":
@@ -350,7 +351,7 @@ public
 					(initialization.optional_features_flag => 
 					(true -> (current_targets_director.release_counters.release_counter_one >= previous_targets.release_counters.release_counter_one))) and
 					-- The image's hash matches the hash listed in the metadata
-					(false -> (current_targets_director.image_hashes.hash_one	= pre (in_image.image.hash))); 
+					(false -> (current_targets_director.image_hashes.hash_one	= pre (Agree_Nodes::HashImg(in_image.image)))); 
 
 				eq new_image_verified_secondary: bool = 
 					-- We are not in the middle of verifying metadata
@@ -365,7 +366,7 @@ public
 					(initialization.optional_features_flag => 
 					(true -> (current_targets_director.release_counters.release_counter_two >= previous_targets.release_counters.release_counter_two))) and
 					-- The image's hash matches the hash listed in the metadata
-					(false -> (current_targets_director.image_hashes.hash_two	= pre (in_image.image_secondary.hash))); 
+					(false -> (current_targets_director.image_hashes.hash_two	= pre (Agree_Nodes::HashImg(in_image.image_secondary)))); 
 
 				eq new_image_verified_secondary2: bool = 
 					-- We are not in the middle of verifying metadata
@@ -380,7 +381,7 @@ public
 					(initialization.optional_features_flag => 
 					(true -> (current_targets_director.release_counters.release_counter_three >= previous_targets.release_counters.release_counter_three))) and
 					-- The image's hash matches the hash listed in the metadata
-					(false -> (current_targets_director.image_hashes.hash_three	= pre (in_image.image_secondary2.hash))); 
+					(false -> (current_targets_director.image_hashes.hash_three	= pre (Agree_Nodes::HashImg(in_image.image_secondary2)))); 
 
 				eq root_director_verified: bool = false -> (
 					-- We have incoming root metadata from the director
@@ -390,10 +391,8 @@ public
 					-- The payload is properly signed
 					(verified_metadata_primary_d.root_metadata.root_threshold_signatures <= 2) and
 					(Agree_Nodes::Match(in_director.metadata.root_metadata.common_payload.signatures.signature_one, 
-					                   in_director.metadata.root_metadata.common_payload.hash,
 														 verified_metadata_primary_d.root_metadata.root_public_keys.key_one)) and
 				  (Agree_Nodes::Match(in_director.metadata.root_metadata.common_payload.signatures.signature_two, 
-					                   in_director.metadata.root_metadata.common_payload.hash,
 														 verified_metadata_primary_d.root_metadata.root_public_keys.key_two)) and
 					-- The version number is non-decreasing
 					(in_director.metadata.root_metadata.common_payload.version >= pre (verified_metadata_primary_d.root_metadata.common_payload.version)) and
@@ -401,10 +400,8 @@ public
 					(in_director.metadata.root_metadata.common_payload.expiration > current_time) and
 					-- The new Root metadata is signed by keys specified in the new root metadata
 					(Agree_Nodes::Match(in_director.metadata.root_metadata.common_payload.signatures.signature_one, 
-					                   in_director.metadata.root_metadata.common_payload.hash,
 														 in_director.metadata.root_metadata.root_public_keys.key_one)) and
 					(Agree_Nodes::Match(in_director.metadata.root_metadata.common_payload.signatures.signature_two, 
-					                   in_director.metadata.root_metadata.common_payload.hash,
 														 in_director.metadata.root_metadata.root_public_keys.key_two))
 				);
 
@@ -416,10 +413,8 @@ public
 					-- We have the correct number of valid signatures
 					(verified_metadata_primary_d.root_metadata.timestamp_threshold_signatures <= 2) and
 					(Agree_Nodes::Match(in_director.metadata.timestamp_metadata.common_payload.signatures.signature_one, 
-					                   in_director.metadata.timestamp_metadata.common_payload.hash,
 														 verified_metadata_primary_d.root_metadata.timestamp_public_keys.key_one)) and
 					(Agree_Nodes::Match(in_director.metadata.timestamp_metadata.common_payload.signatures.signature_two, 
-					                   in_director.metadata.timestamp_metadata.common_payload.hash,
 														 verified_metadata_primary_d.root_metadata.timestamp_public_keys.key_two)) and
 					-- The version number is non-decreasing
 					(in_director.metadata.timestamp_metadata.common_payload.version >= pre (verified_metadata_primary_d.timestamp_metadata.common_payload.version)) and
@@ -435,17 +430,15 @@ public
 					-- We have the correct number of valid signatures
 					verified_metadata_primary_d.root_metadata.snapshot_threshold_signatures <= 2 and
 					Agree_Nodes::Match(in_director.metadata.snapshot_metadata.common_payload.signatures.signature_one, 
-					                   in_director.metadata.snapshot_metadata.common_payload.hash,
 														 verified_metadata_primary_d.root_metadata.snapshot_public_keys.key_one) and
 					Agree_Nodes::Match(in_director.metadata.snapshot_metadata.common_payload.signatures.signature_two, 
-					                   in_director.metadata.snapshot_metadata.common_payload.hash,
 														 verified_metadata_primary_d.root_metadata.snapshot_public_keys.key_two) and
 					-- The version number is non-decreasing
 					(in_director.metadata.snapshot_metadata.common_payload.version >= pre (verified_metadata_primary_d.snapshot_metadata.common_payload.version)) and
 					-- The metadata is not expired
 					in_director.metadata.snapshot_metadata.common_payload.expiration > current_time and 
 				  -- The new Snapshot metadata hashes and version number match those in Timestamp metadata
-					in_director.metadata.snapshot_metadata.hashes = verified_metadata_primary_d.timestamp_metadata.latest_snapshot_hashes and
+					Agree_Nodes::HashSnapshot(in_director.metadata.snapshot_metadata) = verified_metadata_primary_d.timestamp_metadata.latest_snapshot_hash and
 					in_director.metadata.snapshot_metadata.common_payload.version = verified_metadata_primary_d.timestamp_metadata.latest_snapshot_version and
 				  -- The new Snapshot metadata lists a newer (or identical) version number for each Targets metadata file
 					(in_director.metadata.snapshot_metadata.targets_version_numbers.version_number_one >= pre (verified_metadata_primary_d.snapshot_metadata.targets_version_numbers.version_number_one)) and
@@ -465,10 +458,8 @@ public
 					-- We have the correct number of valid signatures
 					verified_metadata_primary_d.root_metadata.targets_threshold_signatures <= 2 and
           Agree_Nodes::Match(in_director.metadata.targets_metadata.common_payload.signatures.signature_one, 
-					                   in_director.metadata.targets_metadata.common_payload.hash,
 														 verified_metadata_primary_d.root_metadata.targets_public_keys.key_one) and
 					Agree_Nodes::Match(in_director.metadata.targets_metadata.common_payload.signatures.signature_two, 
-					                   in_director.metadata.targets_metadata.common_payload.hash,
 														 verified_metadata_primary_d.root_metadata.targets_public_keys.key_two) and
 					-- The version number is non-decreasing
 					(in_director.metadata.targets_metadata.common_payload.version >= pre (verified_metadata_primary_d.targets_metadata.common_payload.version)) and
@@ -490,10 +481,8 @@ public
 					-- We have the correct number of valid signatures
 					verified_metadata_primary_i.root_metadata.root_threshold_signatures <= 2 and
 					Agree_Nodes::Match(in_image.metadata.root_metadata.common_payload.signatures.signature_one, 
-					                   in_image.metadata.root_metadata.common_payload.hash,
 														 verified_metadata_primary_i.root_metadata.root_public_keys.key_one) and
 					Agree_Nodes::Match(in_image.metadata.root_metadata.common_payload.signatures.signature_two, 
-					                   in_image.metadata.root_metadata.common_payload.hash,
 														 verified_metadata_primary_i.root_metadata.root_public_keys.key_two) and
 					-- The version number is non-decreasing
 					(in_image.metadata.root_metadata.common_payload.version >= pre (verified_metadata_primary_i.root_metadata.common_payload.version)) and
@@ -501,10 +490,8 @@ public
 					in_image.metadata.root_metadata.common_payload.expiration > current_time and
 					-- The new Root metadata is signed by keys specified in the new root metadata
 					Agree_Nodes::Match(in_image.metadata.root_metadata.common_payload.signatures.signature_one, 
-					                   in_image.metadata.root_metadata.common_payload.hash,
 														 in_image.metadata.root_metadata.root_public_keys.key_one) and
 					Agree_Nodes::Match(in_image.metadata.root_metadata.common_payload.signatures.signature_two, 
-					                   in_image.metadata.root_metadata.common_payload.hash,
 														 in_image.metadata.root_metadata.root_public_keys.key_two)
 				);
 		  	
@@ -516,10 +503,8 @@ public
 					-- We have the correct number of valid signatures
 					verified_metadata_primary_i.root_metadata.timestamp_threshold_signatures <= 2 and
 					Agree_Nodes::Match(in_image.metadata.timestamp_metadata.common_payload.signatures.signature_one, 
-					                   in_image.metadata.timestamp_metadata.common_payload.hash,
 														 verified_metadata_primary_i.root_metadata.timestamp_public_keys.key_one) and
 					Agree_Nodes::Match(in_image.metadata.timestamp_metadata.common_payload.signatures.signature_two, 
-					                   in_image.metadata.timestamp_metadata.common_payload.hash,
 														 verified_metadata_primary_i.root_metadata.timestamp_public_keys.key_two) and
 					-- The version number is non-decreasing
 					(in_image.metadata.timestamp_metadata.common_payload.version >= pre (verified_metadata_primary_i.timestamp_metadata.common_payload.version)) and
@@ -535,17 +520,15 @@ public
 					-- We have the correct number of valid signatures
 					verified_metadata_primary_i.root_metadata.snapshot_threshold_signatures <= 2 and
 					Agree_Nodes::Match(in_image.metadata.snapshot_metadata.common_payload.signatures.signature_one, 
-					                   in_image.metadata.snapshot_metadata.common_payload.hash,
 														 verified_metadata_primary_i.root_metadata.snapshot_public_keys.key_one) and
 					Agree_Nodes::Match(in_image.metadata.snapshot_metadata.common_payload.signatures.signature_two, 
-					                   in_image.metadata.snapshot_metadata.common_payload.hash,
 														 verified_metadata_primary_i.root_metadata.snapshot_public_keys.key_two) and
 					-- The version number is non-decreasing
 					(in_image.metadata.snapshot_metadata.common_payload.version >= pre (verified_metadata_primary_i.snapshot_metadata.common_payload.version)) and
 					-- The metadata is not expired
 					in_image.metadata.snapshot_metadata.common_payload.expiration > current_time and 
 				  -- The new Snapshot metadata hashes and version number match those in Timestamp metadata
-					in_image.metadata.snapshot_metadata.hashes = verified_metadata_primary_i.timestamp_metadata.latest_snapshot_hashes and
+					Agree_Nodes::HashSnapshot(in_image.metadata.snapshot_metadata) = verified_metadata_primary_i.timestamp_metadata.latest_snapshot_hash and
 					in_image.metadata.snapshot_metadata.common_payload.version = verified_metadata_primary_i.timestamp_metadata.latest_snapshot_version and
 				  -- The new Snapshot metadata lists a newer (or identical) version number for each Targets metadata file
 					(in_image.metadata.snapshot_metadata.targets_version_numbers.version_number_one >= pre (verified_metadata_primary_i.snapshot_metadata.targets_version_numbers.version_number_one)) and
@@ -565,10 +548,8 @@ public
 					-- We have the correct number of valid signatures
 					verified_metadata_primary_i.root_metadata.targets_threshold_signatures <= 2 and
           Agree_Nodes::Match(in_image.metadata.targets_metadata.common_payload.signatures.signature_one, 
-					                   in_image.metadata.targets_metadata.common_payload.hash,
 														 verified_metadata_primary_i.root_metadata.targets_public_keys.key_one) and
 					Agree_Nodes::Match(in_image.metadata.targets_metadata.common_payload.signatures.signature_two, 
-					                   in_image.metadata.targets_metadata.common_payload.hash,
 														 verified_metadata_primary_i.root_metadata.targets_public_keys.key_two) and
 					-- The version number is non-decreasing
 					(in_image.metadata.targets_metadata.common_payload.version >= pre (verified_metadata_primary_i.targets_metadata.common_payload.version)) and
@@ -645,14 +626,12 @@ public
 				guarantee "The vehicle version manifest signature matches the payload":
 					out_director.manifest_present =>
 					Agree_Nodes::Match(out_director.manifest.signature,
-					                   out_director.manifest.hash,
 														 ecu_key);
 
 				-- SHALL
 				guarantee "The ECU version report signature matches the payload":
 					out_director.manifest_present =>
 					Agree_Nodes::Match(out_director.manifest.report_one.signature, 
-					                   out_director.manifest.report_one.hash, 
 														 ecu_key);
 
 				-- SHALL
@@ -664,7 +643,7 @@ public
 					out_director.manifest_present => 
 					(
 						installed_image_primary.filename = out_director.manifest.report_one.image_filename and
-					  installed_image_primary.hash = out_director.manifest.report_one.image_hash and
+					  Agree_Nodes::HashImg(installed_image_primary) = out_director.manifest.report_one.image_hash and
 						installed_image_primary.length = out_director.manifest.report_one.image_length
 					);
 
@@ -918,7 +897,7 @@ public
 					(initialization.optional_features_flag => 
 					(true -> (current_targets.release_counters.release_counter_two >= previous_targets.release_counters.release_counter_two))) and
 					-- The image's hash matches the hash listed in the metadata
-					(false -> (current_targets.image_hashes.hash_two	= pre (in_primary.image.hash))); 
+					(false -> (current_targets.image_hashes.hash_two	= pre (Agree_Nodes::HashImg(in_primary.image)))); 
 
 				eq new_metadata_verified: bool = false -> (
 					-- There is new incoming targets metadata
@@ -927,10 +906,8 @@ public
 					-- The new Targets metadata reaches the threshold count of valid signatures
 					verified_metadata_secondary.root_metadata.targets_threshold_signatures <= 2 and
 					Agree_Nodes::Match((new_targets.common_payload.signatures.signature_one), 
-														 (new_targets.common_payload.hash),
 														 verified_metadata_secondary.root_metadata.targets_public_keys.key_one) and
 					Agree_Nodes::Match((new_targets.common_payload.signatures.signature_two), 
-														 (new_targets.common_payload.hash),
 														 verified_metadata_secondary.root_metadata.targets_public_keys.key_two) and
 					-- The new Targets metadata's version number is greater than or equal to that of the current Targets metadata
 					(new_targets.common_payload.version) >= (current_targets.common_payload.version) and
@@ -961,7 +938,6 @@ public
 				guarantee "The ECU version report signature matches the payload":
 					out_primary.report_present =>
 					Agree_Nodes::Match(out_primary.ecu_version_report.signature, 
-					                   out_primary.ecu_version_report.hash, 
 														 ecu_key);
 
 				-- SHALL
@@ -973,7 +949,7 @@ public
 					out_primary.report_present => 
 					(
 						installed_image_secondary.filename = out_primary.ecu_version_report.image_filename and
-					  installed_image_secondary.hash = out_primary.ecu_version_report.image_hash and
+					  Agree_Nodes::HashImg(installed_image_secondary) = out_primary.ecu_version_report.image_hash and
 						installed_image_secondary.length = out_primary.ecu_version_report.image_length
 					);
 
@@ -1080,7 +1056,7 @@ public
 					(initialization.optional_features_flag => 
 					(true -> (current_targets.release_counters.release_counter_three >= previous_targets.release_counters.release_counter_three))) and
 					-- The image's hash matches the hash listed in the metadata
-					(false -> (current_targets.image_hashes.hash_three	= pre (in_primary.image.hash))); 
+					(false -> (current_targets.image_hashes.hash_three	= pre (Agree_Nodes::HashImg(in_primary.image)))); 
 
 				eq new_metadata_verified: bool = false -> (
 					-- There is new incoming targets metadataT
@@ -1088,10 +1064,8 @@ public
 					-- The new Targets metadata reaches the threshold count of valid signatures
 					verified_metadata_secondary.root_metadata.targets_threshold_signatures <= 2 and
 					Agree_Nodes::Match((new_targets.common_payload.signatures.signature_one), 
-														 (new_targets.common_payload.hash),
 														 verified_metadata_secondary.root_metadata.targets_public_keys.key_one) and
 					Agree_Nodes::Match((new_targets.common_payload.signatures.signature_two), 
-														 (new_targets.common_payload.hash),
 														 verified_metadata_secondary.root_metadata.targets_public_keys.key_two) and
 					-- The new Targets metadata's version number is greater than or equal to that of the current Targets metadata
 					(new_targets.common_payload.version) >= (current_targets.common_payload.version) and
@@ -1122,7 +1096,6 @@ public
 				guarantee "The ECU version report signature matches the payload":
 					out_primary.report_present =>
 					Agree_Nodes::Match(out_primary.ecu_version_report.signature, 
-					                   out_primary.ecu_version_report.hash, 
 														 ecu_key);
 
 				-- SHALL
@@ -1134,7 +1107,7 @@ public
 					out_primary.report_present => 
 					(
 						installed_image_secondary.filename = out_primary.ecu_version_report.image_filename and
-					  installed_image_secondary.hash = out_primary.ecu_version_report.image_hash and
+					  Agree_Nodes::HashImg(installed_image_secondary) = out_primary.ecu_version_report.image_hash and
 						installed_image_secondary.length = out_primary.ecu_version_report.image_length
 					);
 
@@ -1264,9 +1237,9 @@ public
 				--- ASSUMPTIONS/INITIALIZATION ---
 				----------------------------------
 				assume "The ECUs are initialized with a legitimate software image":
-					Agree_Nodes::AuthoredByOem(initialization.primary_image.hash) and
-					Agree_Nodes::AuthoredByOem(initialization.secondary_image.hash) and
-					Agree_Nodes::AuthoredByOem(initialization.secondary_image2.hash) and
+					Agree_Nodes::AuthoredByOem(Agree_Nodes::HashImg(initialization.primary_image)) and
+					Agree_Nodes::AuthoredByOem(Agree_Nodes::HashImg(initialization.secondary_image)) and
+					Agree_Nodes::AuthoredByOem(Agree_Nodes::HashImg(initialization.secondary_image2)) and
 					Agree_Nodes::AuthoredByOem(initialization.metadata_d.targets_metadata.image_hashes.hash_one) and
 					Agree_Nodes::AuthoredByOem(initialization.metadata_d.targets_metadata.image_hashes.hash_two) and
 					Agree_Nodes::AuthoredByOem(initialization.metadata_d.targets_metadata.image_hashes.hash_three);
@@ -1277,7 +1250,8 @@ public
 																	 initialization.secondary_image2.filename) and
 					Agree_Nodes::Compatible3(initialization.metadata_d.targets_metadata.image_filenames.filename_one, 
 					                        initialization.metadata_d.targets_metadata.image_filenames.filename_two,
-																	initialization.metadata_d.targets_metadata.image_filenames.filename_three);
+																	initialization.metadata_d.targets_metadata.image_filenames.filename_three) and
+					Agree_Nodes::Compatible(initialization.secondary_image.filename, initialization.hardware_id_two);
 
 				assume "The ECUs are initialized with valid targets metadata":
 					initialization.metadata_d.targets_metadata.hardware_ids.hardware_id_one = initialization.hardware_id_one and
@@ -1299,49 +1273,46 @@ public
 				-- Partial bundle installation
 				-- Attack is trivially possible (no availability guarantees)
 
-				--guarantee "Freeze":
-				--true -> (
-					--(ecu_metadata_version_secondary > pre (ecu_metadata_version_secondary)) =>
-						--(verified_metadata_secondary.targets_metadata = director_latest_targets)
-				--);
+				guarantee "Freeze":
+				true -> (
+					(ecu_metadata_version_secondary > pre (ecu_metadata_version_secondary)) =>
+						(verified_metadata_secondary.targets_metadata = director_latest_targets)
+				);
 					--true;
 
-				--guarantee "Mixed-bundles":
-					--((ecu_software_version_primary = ecu_software_version_secondary1) and
-					--(ecu_software_version_primary = ecu_software_version_secondary2)) =>
-					--(
-						--gree_Nodes::Compatible3(installed_image_primary.filename,
-					                           --installed_image_secondary.filename,
-																		 --installed_image_secondary2.filename)
-					--);
+				guarantee "Mixed-bundles":
+					((ecu_software_version_primary = ecu_software_version_secondary1) and
+					(ecu_software_version_primary = ecu_software_version_secondary2)) =>
+					(
+						Agree_Nodes::Compatible3(installed_image_primary.filename,
+					                           installed_image_secondary.filename,
+																		 installed_image_secondary2.filename)
+					);
 					--true;
 
-				--guarantee "Mix-and-match":
-					--Agree_Nodes::Compatible3(verified_metadata_primary_d.targets_metadata.image_filenames.filename_one,
-																	-- verified_metadata_primary_d.targets_metadata.image_filenames.filename_two,
-																	 --verified_metadata_primary_d.targets_metadata.image_filenames.filename_three);
+				guarantee "Mix-and-match":
+					Agree_Nodes::Compatible3(verified_metadata_primary_d.targets_metadata.image_filenames.filename_one,
+																	 verified_metadata_primary_d.targets_metadata.image_filenames.filename_two,
+																	 verified_metadata_primary_d.targets_metadata.image_filenames.filename_three);
 					--true;
 
-				--guarantee "Rollback":
-					--(true -> (installed_image_secondary.version >= pre (installed_image_secondary.version))); 
+				guarantee "Rollback":
+					(true -> (installed_image_secondary.version >= pre (installed_image_secondary.version))); 
 					--true;
 
-				-- Arbitrary software
 				guarantee "Arbitrary software":
-					--Agree_Nodes::AuthoredByOem(installed_image_secondary.hash);
-					true;
-
-				-- Faulty bundle
-				-- Director verifies bad VVM and is therefore susceptible to choosing a flawed new bundle of images
-				guarantee "Faulty bundle":
+					Agree_Nodes::AuthoredByOem(Agree_Nodes::HashImg(installed_image_secondary));
 					--true;
-					(director_latest_manifest <> pre (director_latest_manifest)) => (director_latest_manifest = primary_latest_manifest)
 
-				-- OTHER ATTACKS
+				-- Director verifies bad VVM and is therefore susceptible to choosing a flawed new bundle of images
+				-- Can mess with attacker capabilities to force different attacks
+				guarantee "Faulty bundle":
+					(director_latest_manifest <> pre (director_latest_manifest)) => (director_latest_manifest = primary_latest_manifest)
+					--true;
 
 				-- Image and ECU incompatible based on ECU hardware ID
-				--guarantee "Image incompatible with ECU":
-					--Agree_Nodes::Compatible(installed_image_secondary.filename, hardware_id_secondary);
+				guarantee "Incompatible image":
+					Agree_Nodes::Compatible(installed_image_secondary.filename, hardware_id_secondary);
 					--true;
 
 				---------------

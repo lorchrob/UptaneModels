@@ -37,9 +37,9 @@ public
 		tel;
 		
 		-- Bogus/abstract predicates
-		node Match(X: int, Y: int, Z: int) returns (B: bool);
+		node Match(X: int, Z: int) returns (B: bool);
 		let
-			B = (Y + Z) - 5 <= X and X <= (Y + Z) + 5;
+			B = Z - 5 <= X and X <= Z + 5;
 		tel;
 
 		node Compatible(X: int, Y: int) returns (Z: bool);
@@ -52,9 +52,46 @@ public
 			o = (0 <= X + Y + Z) and (X + Y + Z < 10);
 		tel;
 
-		node AuthoredByOem(X: int) returns (Z: bool);
+		node AuthoredByOem(X: Data_Types::Image.impl) returns (Z: bool);
 		let
-			Z = (X >= 0);
+			Z = (X.filename >= 0);
+		tel;
+
+		-- We model a hash as the identity function because we're assuming a perfectly secure
+		-- hash function, and the identity is an easy 1-to-1 function (no collisions)
+		node HashImg(X: Data_Types::Image.impl) returns (Y: Data_Types::Image.impl);
+		let
+			Y = X;
+		tel;
+
+		node HashMan(X: Data_Types::VehicleVersionManifest.impl) returns (Y: Data_Types::VehicleVersionManifest.impl);
+		let
+			Y = X;
+		tel;
+
+		node HashVRep(X: Data_Types::EcuVersionReport.impl) returns (Y: Data_Types::EcuVersionReport.impl);
+		let
+			Y = X;
+		tel;
+
+		node HashRoot(X: Data_Types::RootMetadata.impl) returns (Y: Data_Types::RootMetadata.impl);
+		let
+			Y = X;
+		tel;
+
+		node HashTimestamp(X: Data_Types::TimestampMetadata.impl) returns (Y: Data_Types::TimestampMetadata.impl);
+		let
+			Y = X;
+		tel;
+
+		node HashSnapshot(X: Data_Types::SnapshotMetadata.impl) returns (Y: Data_Types::SnapshotMetadata.impl);
+		let
+			Y = X;
+		tel;
+
+		node HashTargets(X: Data_Types::TargetsMetadata.impl) returns (Y: Data_Types::TargetsMetadata.impl);
+		let
+			Y = X;
 		tel;
 	**};
 end Agree_Nodes;
