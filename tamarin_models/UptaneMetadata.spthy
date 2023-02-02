@@ -404,8 +404,7 @@ builtins: hashing, asymmetric-encryption, signing
   --[
       LatestDirector(version),
       Neq(~root_seckey1, ~root_seckey2),
-      SendRootMetadataDir(root),
-      Unique('director_send_root_metadata')
+      SendRootMetadataDir(root)
     ]->
   [  
     Out(root),
@@ -617,6 +616,7 @@ builtins: hashing, asymmetric-encryption, signing
       Eq(verify(sig6, new_timestamp, pk(~timestamp_seckey2)), true),
 
       PriVerifyMetaDirTimestamp(new_timestamp),
+      PriVerifyMetaDirRoot(new_timestamp),
 
       Unique('primary_verify_meta_dir_timestamp')
     ]->
@@ -896,6 +896,7 @@ builtins: hashing, asymmetric-encryption, signing
     exists-trace 
       "Ex meta #i. SecVerifyTargetsMetadataDir(meta) @#i"
     
+  // Prove that the attacker is (at most) restricted to replay attacks
   lemma meta_authentication1: 
     "All root #i. (PriVerifyMetaDirRoot(root) @#i ==> 
       (Ex #j. SendRootMetadataDir(root) @#j & #j<#i))"
@@ -908,7 +909,7 @@ builtins: hashing, asymmetric-encryption, signing
     "All ss #i. (PriVerifyMetaDirSnapshot(ss) @#i ==> 
       (Ex #j. SendSnapshotMetadataDir(ss) @#j & #j<#i))"
 
-  lemma meta_authentication4 [use_induction]: 
+  lemma meta_authentication4: 
     "All targets #i. (PriVerifyMetaDirTargets(targets) @#i ==> 
       (Ex #j. SendTargetsMetadataDir(targets) @#j & #j<#i))"
 
@@ -928,5 +929,4 @@ builtins: hashing, asymmetric-encryption, signing
     "All targets #i. (SecVerifyTargetsMetadataDir(targets) @#i ==> 
       (Ex #j. SendTargetsMetadataDir(targets) @#j & #j<#i) |
       (Ex #j. PriSendMeta(targets) @#j & #j<#i))"
-    
  end

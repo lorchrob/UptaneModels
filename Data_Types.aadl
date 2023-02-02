@@ -36,11 +36,11 @@ public
 	data implementation PrimaryToImage.impl
 		subcomponents
 			image_filename: data Base_Types::Integer;
-			image_hash: data Data_Types::Image.impl;
+			image_hash: data Base_Types::Integer;
 			image_filename_secondary: data Base_Types::Integer;
 			image_filename_secondary2: data Base_Types::Integer;
-			image_hash_secondary: data Data_Types::Image.impl;
-			image_hash_secondary2: data Data_Types::Image.impl;
+			image_hash_secondary: data Base_Types::Integer;
+			image_hash_secondary2: data Base_Types::Integer;
 			metadata_request: data MetadataRequest.impl;
 			image_request: data Base_Types::Boolean;
 	end PrimaryToImage.impl;
@@ -163,7 +163,7 @@ public
 			common_payload: data CommonPayload.impl;
 			latest_snapshot_filename: data Base_Types::Integer;
 			latest_snapshot_version: data Base_Types::Integer;
-			latest_snapshot_hash: data SnapshotMetadata.impl;
+			latest_snapshot_hash: data Base_Types::Integer;
 	end TimestampMetadata.impl;
 
 	data Metadata
@@ -211,7 +211,7 @@ public
 			signature_key: data Base_Types::Integer;
 			ecu_id: data Base_Types::Integer;
 			image_filename: data Base_Types::Integer;
-			image_hash: data Data_Types::Image.impl;
+			image_hash: data Base_Types::Integer;
 			image_length: data Base_Types::Integer;
 			latest_time: data Base_Types::Integer;
 			nonce: data Base_Types::Integer;
@@ -253,9 +253,9 @@ public
 
 	data implementation ImageHashList.impl
 		subcomponents
-			hash_one: data Data_Types::Image.impl;
-			hash_two: data Data_Types::Image.impl;
-			hash_three: data Data_Types::Image.impl;
+			hash_one: data Base_Types::Integer;
+			hash_two: data Base_Types::Integer;
+			hash_three: data Base_Types::Integer;
 	end ImageHashList.impl;
 
 	data TargetsHashList
@@ -263,9 +263,9 @@ public
 
 	data implementation TargetsHashList.impl
 		subcomponents
-			hash_one: data Data_Types::TargetsMetadata.impl;
-			hash_two: data Data_Types::TargetsMetadata.impl;
-			hash_three: data Data_Types::TargetsMetadata.impl;
+			hash_one: data Base_Types::Integer;
+			hash_two: data Base_Types::Integer;
+			hash_three: data Base_Types::Integer;
 	end TargetsHashList.impl;
 
 
@@ -314,7 +314,7 @@ public
 	data implementation HashList.impl
 		subcomponents
 			hash_one: data Base_Types::Integer;
-			hash_two: data Base_Types::Integer;	
+			hash_two: data Base_Types::Integer;
 			hash_three: data Base_Types::Integer;
 	end HashList.impl;
 	

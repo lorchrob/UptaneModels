@@ -39,7 +39,7 @@ public
 		-- Bogus/abstract predicates
 		node Match(X: int, Z: int) returns (B: bool);
 		let
-			B = Z - 5 <= X and X <= Z + 5;
+			B = (X = Z);
 		tel;
 
 		node Compatible(X: int, Y: int) returns (Z: bool);
@@ -52,46 +52,44 @@ public
 			o = (0 <= X + Y + Z) and (X + Y + Z < 10);
 		tel;
 
-		node AuthoredByOem(X: Data_Types::Image.impl) returns (Z: bool);
+		node AuthoredByOem(X: int) returns (Z: bool);
 		let
-			Z = (X.filename >= 0);
+			Z = (X >= 0);
 		tel;
 
-		-- We model a hash as the identity function because we're assuming a perfectly secure
-		-- hash function, and the identity is an easy 1-to-1 function (no collisions)
-		node HashImg(X: Data_Types::Image.impl) returns (Y: Data_Types::Image.impl);
+		node HashImg(X: Data_Types::Image.impl) returns (Y: int);
 		let
-			Y = X;
+			Y = X.filename;
 		tel;
 
-		node HashMan(X: Data_Types::VehicleVersionManifest.impl) returns (Y: Data_Types::VehicleVersionManifest.impl);
+		node HashMan(X: Data_Types::VehicleVersionManifest.impl) returns (Y: int);
 		let
-			Y = X;
+			Y = X.signature_key;
 		tel;
 
-		node HashVRep(X: Data_Types::EcuVersionReport.impl) returns (Y: Data_Types::EcuVersionReport.impl);
+		node HashVRep(X: Data_Types::EcuVersionReport.impl) returns (Y: int);
 		let
-			Y = X;
+			Y = X.signature_key;
 		tel;
 
-		node HashRoot(X: Data_Types::RootMetadata.impl) returns (Y: Data_Types::RootMetadata.impl);
+		node HashRoot(X: Data_Types::RootMetadata.impl) returns (Y: int);
 		let
-			Y = X;
+			Y = X.common_payload.filename;
 		tel;
 
-		node HashTimestamp(X: Data_Types::TimestampMetadata.impl) returns (Y: Data_Types::TimestampMetadata.impl);
+		node HashTimestamp(X: Data_Types::TimestampMetadata.impl) returns (Y: int);
 		let
-			Y = X;
+			Y = X.common_payload.filename;
 		tel;
 
-		node HashSnapshot(X: Data_Types::SnapshotMetadata.impl) returns (Y: Data_Types::SnapshotMetadata.impl);
+		node HashSnapshot(X: Data_Types::SnapshotMetadata.impl) returns (Y: int);
 		let
-			Y = X;
+			Y = X.common_payload.filename;
 		tel;
 
-		node HashTargets(X: Data_Types::TargetsMetadata.impl) returns (Y: Data_Types::TargetsMetadata.impl);
+		node HashTargets(X: Data_Types::TargetsMetadata.impl) returns (Y: int);
 		let
-			Y = X;
+			Y = X.common_payload.filename;
 		tel;
 	**};
 end Agree_Nodes;

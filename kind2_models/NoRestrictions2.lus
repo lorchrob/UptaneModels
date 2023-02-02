@@ -1,0 +1,659 @@
+type SignatureList_dot_impl = struct {signature_one : int; signature_two : int};
+type KeyList_dot_impl = struct {key_one : int; key_two : int};
+type CommonPayload_dot_impl = struct {expiration : int; filename : int; signature_keys : KeyList_dot_impl; signatures : SignatureList_dot_impl; version : int};
+type RootMetadata_dot_impl = struct {common_payload : CommonPayload_dot_impl; root_public_keys : KeyList_dot_impl; root_threshold_signatures : int; snapshot_public_keys : KeyList_dot_impl; snapshot_threshold_signatures : int; targets_public_keys : KeyList_dot_impl; targets_threshold_signatures : int; timestamp_public_keys : KeyList_dot_impl; timestamp_threshold_signatures : int};
+type FilenameList_dot_impl = struct {filename_one : int; filename_three : int; filename_two : int};
+type ImageHashList_dot_impl = struct {hash_one : int; hash_three : int; hash_two : int};
+type FileSizeList_dot_impl = struct {file_size_one : int; file_size_three : int; file_size_two : int};
+type ReleaseCounterList_dot_impl = struct {release_counter_one : int; release_counter_three : int; release_counter_two : int};
+type HardwareIdList_dot_impl = struct {hardware_id_one : int; hardware_id_three : int; hardware_id_two : int};
+type EcuIdList_dot_impl = struct {ecu_id_one : int; ecu_id_three : int; ecu_id_two : int};
+type TargetsMetadata_dot_impl = struct {common_payload : CommonPayload_dot_impl; ecu_ids : EcuIdList_dot_impl; hardware_ids : HardwareIdList_dot_impl; image_file_sizes : FileSizeList_dot_impl; image_filenames : FilenameList_dot_impl; image_hashes : ImageHashList_dot_impl; release_counters : ReleaseCounterList_dot_impl};
+type VersionNumberList_dot_impl = struct {version_number_one : int; version_number_three : int; version_number_two : int};
+type TargetsHashList_dot_impl = struct {hash_one : int; hash_three : int; hash_two : int};
+type SnapshotMetadata_dot_impl = struct {common_payload : CommonPayload_dot_impl; targets_filenames : FilenameList_dot_impl; targets_hashes : TargetsHashList_dot_impl; targets_version_numbers : VersionNumberList_dot_impl};
+type TimestampMetadata_dot_impl = struct {common_payload : CommonPayload_dot_impl; latest_snapshot_filename : int; latest_snapshot_hash : int; latest_snapshot_version : int};
+type Metadata_dot_impl = struct {root_metadata : RootMetadata_dot_impl; snapshot_metadata : SnapshotMetadata_dot_impl; targets_metadata : TargetsMetadata_dot_impl; timestamp_metadata : TimestampMetadata_dot_impl};
+type Image_dot_impl = struct {bundle : int; contents : int; filename : int; length : int; version : int};
+type EcuVersionReport_dot_impl = struct {ecu_id : int; image_filename : int; image_hash : int; image_length : int; latest_time : int; nonce : int; signature : int; signature_key : int};
+type VehicleVersionManifest_dot_impl = struct {report_one : EcuVersionReport_dot_impl; report_three : EcuVersionReport_dot_impl; report_two : EcuVersionReport_dot_impl; signature : int; signature_key : int};
+type InitializationBus_dot_impl = struct {ecu_id_one : int; ecu_id_three : int; ecu_id_two : int; ecu_key_one : int; ecu_key_three : int; ecu_key_two : int; hardware_id_one : int; hardware_id_three : int; hardware_id_two : int; manifest : VehicleVersionManifest_dot_impl; metadata_d : Metadata_dot_impl; metadata_i : Metadata_dot_impl; optional_features_flag : bool; primary_image : Image_dot_impl; report_three : EcuVersionReport_dot_impl; report_two : EcuVersionReport_dot_impl; secondary_image : Image_dot_impl; secondary_image2 : Image_dot_impl};
+type MetadataRequest_dot_impl = struct {root_metadata : bool; snapshot_metadata : bool; targets_metadata : bool; timestamp_metadata : bool};
+type PrimaryToDirector_dot_impl = struct {manifest : VehicleVersionManifest_dot_impl; manifest_present : bool; metadata_request : MetadataRequest_dot_impl};
+type DirectorToPrimary_dot_impl = struct {metadata : Metadata_dot_impl; metadata_response : MetadataRequest_dot_impl};
+type PrimaryToImage_dot_impl = struct {image_filename : int; image_filename_secondary : int; image_filename_secondary2 : int; image_hash : int; image_hash_secondary : int; image_hash_secondary2 : int; image_request : bool; metadata_request : MetadataRequest_dot_impl};
+type ImageToPrimary_dot_impl = struct {image : Image_dot_impl; image_response : bool; image_secondary : Image_dot_impl; image_secondary2 : Image_dot_impl; metadata : Metadata_dot_impl; metadata_present : bool; metadata_response : MetadataRequest_dot_impl};
+type SecondaryToPrimary_dot_impl = struct {ecu_version_report : EcuVersionReport_dot_impl; report_present : bool};
+type TimeServerToPrimary_dot_impl = struct {current_time : int};
+type PrimaryToSecondary_dot_impl = struct {current_time : int; image : Image_dot_impl; image_present : bool; metadata : Metadata_dot_impl; metadata_present : MetadataRequest_dot_impl; report_request : bool; time_present : bool};
+type VerificationStage = enum {ROOT_DIRECTOR, TIMESTAMP_DIRECTOR, SNAPSHOT_DIRECTOR, TARGETS_DIRECTOR, ROOT_IMAGE, TIMESTAMP_IMAGE, SNAPSHOT_IMAGE, TARGETS_IMAGE, VERIFICATION_SUCCESS, VERIFICATION_FAILURE};
+
+const VERIFY_SUCCESS : VerificationStage = VERIFICATION_SUCCESS;
+const ROOT_D : VerificationStage = ROOT_DIRECTOR;
+const TIMESTAMP_D : VerificationStage = TIMESTAMP_DIRECTOR;
+const SNAPSHOT_D : VerificationStage = SNAPSHOT_DIRECTOR;
+const TARGETS_D : VerificationStage = TARGETS_DIRECTOR;
+const ROOT_I : VerificationStage = ROOT_IMAGE;
+const TIMESTAMP_I : VerificationStage = TIMESTAMP_IMAGE;
+const SNAPSHOT_I : VerificationStage = SNAPSHOT_IMAGE;
+const TARGETS_I : VerificationStage = TARGETS_IMAGE;
+const VERIFY_FAIL : VerificationStage = VERIFICATION_FAILURE;
+const image_repo_port_out_primary_instrumented : bool;
+const primary_ecu_port_out_secondary_instrumented : bool;
+const time_server_port_out_primary_instrumented : bool;
+const secondary_ecu_port_out_primary_instrumented : bool;
+const primary_ecu_port_out_image_instrumented : bool;
+const director_repo_port_out_primary_instrumented : bool;
+const primary_ecu_port_out_secondary2_instrumented : bool;
+const primary_ecu_port_out_director_instrumented : bool;
+const secondary_ecu2_port_out_primary_instrumented : bool;
+
+node Match (
+  X : int;
+  Z : int
+) returns (
+  B : bool
+);
+let
+  B = (X) = (Z);
+tel
+
+node Compatible3 (
+  X : int;
+  Y : int;
+  Z : int
+) returns (
+  o : bool
+);
+let
+  o = ((0) <= (((X) + (Y)) + (Z))) and ((((X) + (Y)) + (Z)) < (10));
+tel
+
+node Compatible (
+  X : int;
+  Y : int
+) returns (
+  Z : bool
+);
+let
+  Z = (((Y) - (5)) <= (X)) and ((X) <= ((Y) + (5)));
+tel
+
+node AuthoredByOem (
+  X : int
+) returns (
+  Z : bool
+);
+let
+  Z = (X) >= (0);
+tel
+
+node HashImg (
+  X : Image_dot_impl
+) returns (
+  Y : int
+);
+let
+  Y = (X).filename;
+tel
+
+node HashSnapshot (
+  X : SnapshotMetadata_dot_impl
+) returns (
+  Y : int
+);
+let
+  Y = ((X).common_payload).filename;
+tel
+
+node primary_ecu_Inst_director_repo_port_in_primary_dot_Impl (
+  in_primary : PrimaryToDirector_dot_impl
+) returns (
+  out_director_instrumented : PrimaryToDirector_dot_impl
+);
+let
+  out_director_instrumented = if (primary_ecu_port_out_director_instrumented) then (primary_ecu_Inst_director_repo_port_in_primary(in_primary)) else (in_primary);
+tel
+
+node image_repo_Inst_primary_ecu_port_in_image_dot_Impl (
+  in_image : ImageToPrimary_dot_impl
+) returns (
+  out_primary_instrumented : ImageToPrimary_dot_impl
+);
+let
+  out_primary_instrumented = if (image_repo_port_out_primary_instrumented) then (image_repo_Inst_primary_ecu_port_in_image(in_image)) else (in_image);
+tel
+
+node primary_ecu_Inst_image_repo_port_in_primary_dot_Impl (
+  in_primary : PrimaryToImage_dot_impl
+) returns (
+  out_image_instrumented : PrimaryToImage_dot_impl
+);
+let
+  out_image_instrumented = if (primary_ecu_port_out_image_instrumented) then (primary_ecu_Inst_image_repo_port_in_primary(in_primary)) else (in_primary);
+tel
+
+node secondary_ecu_Inst_primary_ecu_port_in_secondary_dot_Impl (
+  in_secondary : SecondaryToPrimary_dot_impl
+) returns (
+  out_primary_instrumented : SecondaryToPrimary_dot_impl
+);
+let
+  out_primary_instrumented = if (secondary_ecu_port_out_primary_instrumented) then (secondary_ecu_Inst_primary_ecu_port_in_secondary(in_secondary)) else (in_secondary);
+tel
+
+node director_repo_Inst_primary_ecu_port_in_director_dot_Impl (
+  in_director : DirectorToPrimary_dot_impl
+) returns (
+  out_primary_instrumented : DirectorToPrimary_dot_impl
+);
+let
+  out_primary_instrumented = if (director_repo_port_out_primary_instrumented) then (director_repo_Inst_primary_ecu_port_in_director(in_director)) else (in_director);
+tel
+
+node primary_ecu_Inst_secondary_ecu2_port_in_primary_dot_Impl (
+  in_primary : PrimaryToSecondary_dot_impl
+) returns (
+  out_secondary2_instrumented : PrimaryToSecondary_dot_impl
+);
+let
+  out_secondary2_instrumented = if (primary_ecu_port_out_secondary2_instrumented) then (primary_ecu_Inst_secondary_ecu2_port_in_primary(in_primary)) else (in_primary);
+tel
+
+node secondary_ecu2_Inst_primary_ecu_port_in_secondary2_dot_Impl (
+  in_secondary2 : SecondaryToPrimary_dot_impl
+) returns (
+  out_primary_instrumented : SecondaryToPrimary_dot_impl
+);
+let
+  out_primary_instrumented = if (secondary_ecu2_port_out_primary_instrumented) then (secondary_ecu2_Inst_primary_ecu_port_in_secondary2(in_secondary2)) else (in_secondary2);
+tel
+
+node primary_ecu_Inst_secondary_ecu_port_in_primary_dot_Impl (
+  in_primary : PrimaryToSecondary_dot_impl
+) returns (
+  out_secondary_instrumented : PrimaryToSecondary_dot_impl
+);
+let
+  out_secondary_instrumented = if (primary_ecu_port_out_secondary_instrumented) then (primary_ecu_Inst_secondary_ecu_port_in_primary(in_primary)) else (in_primary);
+tel
+
+node time_server_Inst_primary_ecu_port_in_time_server_dot_Impl (
+  in_time_server : TimeServerToPrimary_dot_impl
+) returns (
+  out_primary_instrumented : TimeServerToPrimary_dot_impl
+);
+let
+  out_primary_instrumented = if (time_server_port_out_primary_instrumented) then (time_server_Inst_primary_ecu_port_in_time_server(in_time_server)) else (in_time_server);
+tel
+
+node imported DirectorRepo (
+  initialization : InitializationBus_dot_impl;
+  in_primary : PrimaryToDirector_dot_impl
+) returns (
+  out_primary : DirectorToPrimary_dot_impl;
+  latest_targets : TargetsMetadata_dot_impl;
+  latest_manifest : VehicleVersionManifest_dot_impl
+);
+(*@contract
+  var primary_ecu_id : int = ((initialization).ecu_id_one) -> (pre (primary_ecu_id));
+  var secondary_ecu_id : int = ((initialization).ecu_id_two) -> (pre (secondary_ecu_id));
+  var secondary_ecu_id2 : int = ((initialization).ecu_id_three) -> (pre (secondary_ecu_id2));
+  var primary_ecu_key : int = ((initialization).ecu_key_one) -> (pre (primary_ecu_key));
+  var secondary_ecu_key : int = ((initialization).ecu_key_two) -> (pre (secondary_ecu_key));
+  var secondary_ecu_key2 : int = ((initialization).ecu_key_three) -> (pre (secondary_ecu_key2));
+  var hardware_id_one : int = ((initialization).hardware_id_one) -> (pre (hardware_id_one));
+  var hardware_id_two : int = ((initialization).hardware_id_two) -> (pre (hardware_id_two));
+  var hardware_id_three : int = ((initialization).hardware_id_three) -> (pre (hardware_id_three));
+  var valid_manifest : bool = (false) -> (((initialization).optional_features_flag) => (((((in_primary).manifest_present) and ((((pre ((((in_primary).manifest).report_one).nonce)) > (pre (((current_manifest).report_one).nonce))) and ((pre ((((in_primary).manifest).report_two).nonce)) > (pre (((current_manifest).report_two).nonce)))) and ((pre ((((in_primary).manifest).report_three).nonce)) > (pre (((current_manifest).report_three).nonce))))) and ((((pre ((((in_primary).manifest).report_one).ecu_id)) = (primary_ecu_id)) and ((pre ((((in_primary).manifest).report_two).ecu_id)) = (secondary_ecu_id))) and ((pre ((((in_primary).manifest).report_three).ecu_id)) = (secondary_ecu_id2)))) and ((((Match(pre (((in_primary).manifest).signature), primary_ecu_key)) and (Match(pre ((((in_primary).manifest).report_one).signature), primary_ecu_key))) and (Match(pre ((((in_primary).manifest).report_two).signature), secondary_ecu_key))) and (Match(pre ((((in_primary).manifest).report_three).signature), secondary_ecu_key2)))));
+  var current_manifest : VehicleVersionManifest_dot_impl = ((initialization).manifest) -> (if (valid_manifest) then (pre ((in_primary).manifest)) else (pre (current_manifest)));
+  guarantee "Test guarantee to make partial bundle pass in benign case" (true) -> (((((((out_primary).metadata).root_metadata).targets_public_keys) = (pre ((((out_primary).metadata).root_metadata).targets_public_keys))) and (true)) -> (((((out_primary).metadata).root_metadata).targets_threshold_signatures) = (pre ((((out_primary).metadata).root_metadata).targets_threshold_signatures))));
+  guarantee "The Director repo sends metadata if and only if there is a request from the Primary" ((((((out_primary).metadata_response).root_metadata) = ((false) -> (pre (((in_primary).metadata_request).root_metadata)))) and ((((out_primary).metadata_response).targets_metadata) = ((false) -> (pre (((in_primary).metadata_request).targets_metadata))))) and ((((out_primary).metadata_response).snapshot_metadata) = ((false) -> (pre (((in_primary).metadata_request).snapshot_metadata))))) and ((((out_primary).metadata_response).timestamp_metadata) = ((false) -> (pre (((in_primary).metadata_request).timestamp_metadata))));
+  guarantee "The Director repo only generates new metadata upon receiving a vehicle version manifest" (true) -> ((not (pre ((in_primary).manifest_present))) => (((out_primary).metadata) = (pre ((out_primary).metadata))));
+  guarantee "The Director determines the suitable set of images by managing dependencies and conflicts" Compatible3(((((out_primary).metadata).targets_metadata).image_filenames).filename_one, ((((out_primary).metadata).targets_metadata).image_filenames).filename_two, ((((out_primary).metadata).targets_metadata).image_filenames).filename_three);
+  guarantee "The Director makes sure that each image is compatible with its corresponding ECU" ((initialization).optional_features_flag) => (((Compatible(((((out_primary).metadata).targets_metadata).image_filenames).filename_one, hardware_id_one)) and (Compatible(((((out_primary).metadata).targets_metadata).image_filenames).filename_two, hardware_id_two))) and (Compatible(((((out_primary).metadata).targets_metadata).image_filenames).filename_three, hardware_id_three)));
+  guarantee "Well-formedness guarantees" (((((((((out_primary).metadata).targets_metadata).hardware_ids).hardware_id_one) = (hardware_id_one)) and ((((((out_primary).metadata).targets_metadata).hardware_ids).hardware_id_two) = (hardware_id_two))) and ((true) -> ((((((out_primary).metadata).targets_metadata).release_counters).release_counter_one) >= (pre (((((out_primary).metadata).targets_metadata).release_counters).release_counter_one))))) and ((true) -> ((((((out_primary).metadata).targets_metadata).release_counters).release_counter_two) >= (pre (((((out_primary).metadata).targets_metadata).release_counters).release_counter_two))))) and ((true) -> ((((((out_primary).metadata).targets_metadata).release_counters).release_counter_three) >= (pre (((((out_primary).metadata).targets_metadata).release_counters).release_counter_three))));
+  guarantee "The Director repo checks the vehicle version manifest for validity before generating new metadata" ((initialization).optional_features_flag) => ((true) -> ((not (valid_manifest)) => (((out_primary).metadata) = (pre ((out_primary).metadata)))));
+  guarantee "Metadata file version numbers are incremented when the file is updated" ((initialization).optional_features_flag) => ((true) -> ((((((((out_primary).metadata).root_metadata) <> (pre (((out_primary).metadata).root_metadata))) => ((((((out_primary).metadata).root_metadata).common_payload).version) = ((pre (((((out_primary).metadata).root_metadata).common_payload).version)) + (1)))) and (((((out_primary).metadata).timestamp_metadata) <> (pre (((out_primary).metadata).timestamp_metadata))) => ((((((out_primary).metadata).timestamp_metadata).common_payload).version) = ((pre (((((out_primary).metadata).timestamp_metadata).common_payload).version)) + (1))))) and (((((out_primary).metadata).targets_metadata) <> (pre (((out_primary).metadata).targets_metadata))) => ((((((out_primary).metadata).targets_metadata).common_payload).version) = ((pre (((((out_primary).metadata).targets_metadata).common_payload).version)) + (1))))) and (((((out_primary).metadata).snapshot_metadata) <> (pre (((out_primary).metadata).snapshot_metadata))) => ((((((out_primary).metadata).snapshot_metadata).common_payload).version) = ((pre (((((out_primary).metadata).snapshot_metadata).common_payload).version)) + (1))))));
+  guarantee "Set initial metadata" (((out_primary).metadata) = ((initialization).metadata_d)) -> (true);
+  guarantee "Director only tells ECUs to download images authored by OEMs" ((AuthoredByOem(((((out_primary).metadata).targets_metadata).image_hashes).hash_one)) and (AuthoredByOem(((((out_primary).metadata).targets_metadata).image_hashes).hash_two))) and (AuthoredByOem(((((out_primary).metadata).targets_metadata).image_hashes).hash_three));
+  guarantee "Set the probe" (latest_targets) = ((((initialization).metadata_d).targets_metadata) -> (if (((out_primary).metadata_response).targets_metadata) then (((out_primary).metadata).targets_metadata) else (pre (latest_targets))));
+  guarantee "Set the probe (2)" (latest_manifest) = (((initialization).manifest) -> (if (valid_manifest) then ((in_primary).manifest) else (pre (latest_manifest))));
+*)
+
+node imported ImageRepo (
+  initialization : InitializationBus_dot_impl;
+  in_primary : PrimaryToImage_dot_impl
+) returns (
+  out_primary : ImageToPrimary_dot_impl
+);
+(*@contract
+  var hardware_id_one : int = ((initialization).hardware_id_one) -> (pre (hardware_id_one));
+  var hardware_id_two : int = ((initialization).hardware_id_two) -> (pre (hardware_id_two));
+  var hardware_id_three : int = ((initialization).hardware_id_three) -> (pre (hardware_id_three));
+  guarantee "Test guarantee to make partial bundle pass in benign case" (true) -> (((((out_primary).metadata).root_metadata).targets_public_keys) = (pre ((((out_primary).metadata).root_metadata).targets_public_keys)));
+  guarantee "Initialize the Image repo" ((((((out_primary).metadata) = ((initialization).metadata_i)) and (((out_primary).image) = ((initialization).primary_image))) and (((out_primary).image_secondary) = ((initialization).secondary_image))) and (((out_primary).image_secondary2) = ((initialization).secondary_image2))) -> (true);
+  guarantee "The Image Repo sends metadata and images if and only if there is a request from the Primary, ie,
+				          	the Image Repo provides an interface for the download of metadata and images" (((((((out_primary).metadata_response).root_metadata) = ((false) -> (pre (((in_primary).metadata_request).root_metadata)))) and ((((out_primary).metadata_response).targets_metadata) = ((false) -> (pre (((in_primary).metadata_request).targets_metadata))))) and ((((out_primary).metadata_response).snapshot_metadata) = ((false) -> (pre (((in_primary).metadata_request).snapshot_metadata))))) and ((((out_primary).metadata_response).timestamp_metadata) = ((false) -> (pre (((in_primary).metadata_request).timestamp_metadata))))) and (((out_primary).image_response) = ((false) -> (pre ((in_primary).image_request))));
+  guarantee "The Image Repo sends the correct images based on the Primary's request" (true) -> (((((((((out_primary).image).filename) = (pre ((in_primary).image_filename))) and ((HashImg((out_primary).image)) = (pre ((in_primary).image_hash)))) and ((((out_primary).image_secondary).filename) = (pre ((in_primary).image_filename_secondary)))) and ((HashImg((out_primary).image_secondary)) = (pre ((in_primary).image_hash_secondary)))) and ((((out_primary).image_secondary2).filename) = (pre ((in_primary).image_filename_secondary2)))) and ((HashImg((out_primary).image_secondary2)) = (pre ((in_primary).image_hash_secondary2))));
+  guarantee "The Image Repository correctly generates Targets metadata, that is, the targets metadata generated
+				           by the repository matches the images available." ((((((((((((((out_primary).image).version) = (((((out_primary).metadata).targets_metadata).release_counters).release_counter_one)) and ((((out_primary).image_secondary).version) = (((((out_primary).metadata).targets_metadata).release_counters).release_counter_two))) and ((((out_primary).image_secondary2).version) = (((((out_primary).metadata).targets_metadata).release_counters).release_counter_three))) and ((((out_primary).image).filename) = (((((out_primary).metadata).targets_metadata).image_filenames).filename_one))) and ((((out_primary).image_secondary).filename) = (((((out_primary).metadata).targets_metadata).image_filenames).filename_two))) and ((((out_primary).image_secondary2).filename) = (((((out_primary).metadata).targets_metadata).image_filenames).filename_three))) and ((HashImg((out_primary).image)) = (((((out_primary).metadata).targets_metadata).image_hashes).hash_one))) and ((HashImg((out_primary).image_secondary)) = (((((out_primary).metadata).targets_metadata).image_hashes).hash_two))) and ((HashImg((out_primary).image_secondary2)) = (((((out_primary).metadata).targets_metadata).image_hashes).hash_three))) and ((((((out_primary).metadata).targets_metadata).hardware_ids).hardware_id_one) = (hardware_id_one))) and ((((((out_primary).metadata).targets_metadata).hardware_ids).hardware_id_two) = (hardware_id_two))) and ((((((out_primary).metadata).targets_metadata).hardware_ids).hardware_id_three) = (hardware_id_three));
+  guarantee "All images are authored by a legitimate OEM" (((((AuthoredByOem(HashImg((out_primary).image))) and (AuthoredByOem(HashImg((out_primary).image_secondary)))) and (AuthoredByOem(HashImg((out_primary).image_secondary2)))) and (AuthoredByOem(((((out_primary).metadata).targets_metadata).image_hashes).hash_one))) and (AuthoredByOem(((((out_primary).metadata).targets_metadata).image_hashes).hash_two))) and (AuthoredByOem(((((out_primary).metadata).targets_metadata).image_hashes).hash_three));
+  guarantee "Metadata file version numbers are incremented when the file is updated" ((initialization).optional_features_flag) => ((true) -> ((((((((out_primary).metadata).root_metadata) <> (pre (((out_primary).metadata).root_metadata))) => ((((((out_primary).metadata).root_metadata).common_payload).version) = ((pre (((((out_primary).metadata).root_metadata).common_payload).version)) + (1)))) and (((((out_primary).metadata).timestamp_metadata) <> (pre (((out_primary).metadata).timestamp_metadata))) => ((((((out_primary).metadata).timestamp_metadata).common_payload).version) = ((pre (((((out_primary).metadata).timestamp_metadata).common_payload).version)) + (1))))) and (((((out_primary).metadata).targets_metadata) <> (pre (((out_primary).metadata).targets_metadata))) => ((((((out_primary).metadata).targets_metadata).common_payload).version) = ((pre (((((out_primary).metadata).targets_metadata).common_payload).version)) + (1))))) and (((((out_primary).metadata).snapshot_metadata) <> (pre (((out_primary).metadata).snapshot_metadata))) => ((((((out_primary).metadata).snapshot_metadata).common_payload).version) = ((pre (((((out_primary).metadata).snapshot_metadata).common_payload).version)) + (1))))));
+*)
+
+node imported PrimaryEcu (
+  initialization : InitializationBus_dot_impl;
+  in_director : DirectorToPrimary_dot_impl;
+  in_image : ImageToPrimary_dot_impl;
+  in_secondary : SecondaryToPrimary_dot_impl;
+  in_secondary2 : SecondaryToPrimary_dot_impl;
+  in_time_server : TimeServerToPrimary_dot_impl
+) returns (
+  out_director : PrimaryToDirector_dot_impl;
+  out_image : PrimaryToImage_dot_impl;
+  out_secondary : PrimaryToSecondary_dot_impl;
+  out_secondary2 : PrimaryToSecondary_dot_impl;
+  installed_image_primary : Image_dot_impl;
+  verification_stage_primary : VerificationStage;
+  verified_metadata_primary_d : Metadata_dot_impl;
+  verified_metadata_primary_i : Metadata_dot_impl;
+  latest_targets_director : TargetsMetadata_dot_impl;
+  ecu_software_version_primary : int;
+  latest_manifest : VehicleVersionManifest_dot_impl
+);
+(*@contract
+  var optional_flag : bool = true;
+  var ecu_id : int = ((initialization).ecu_id_one) -> (pre (ecu_id));
+  var ecu_key : int = ((initialization).ecu_key_one) -> (pre (ecu_key));
+  var hardware_id : int = ((initialization).hardware_id_one) -> (pre (hardware_id));
+  var hardware_id_secondary : int = ((initialization).hardware_id_two) -> (pre (hardware_id_secondary));
+  var hardware_id_secondary2 : int = ((initialization).hardware_id_three) -> (pre (hardware_id_secondary2));
+  var initial_image : Image_dot_impl = ((initialization).primary_image) -> (pre (initial_image));
+  var current_time : int = (in_time_server).current_time;
+  var most_recent_secondary_report : EcuVersionReport_dot_impl = ((initialization).report_two) -> (if (pre ((in_secondary).report_present)) then (pre ((in_secondary).ecu_version_report)) else (pre (most_recent_secondary_report)));
+  var most_recent_secondary_report2 : EcuVersionReport_dot_impl = ((initialization).report_three) -> (if (pre ((in_secondary2).report_present)) then (pre ((in_secondary2).ecu_version_report)) else (pre (most_recent_secondary_report2)));
+  var attack_detected : bool = false;
+  var previous_nonce : int = (0) -> (if (pre ((out_director).manifest_present)) then (pre ((((out_director).manifest).report_one).nonce)) else (pre (previous_nonce)));
+  var current_targets_director : TargetsMetadata_dot_impl = (verified_metadata_primary_d).targets_metadata;
+  var previous_targets : TargetsMetadata_dot_impl = (((initialization).metadata_d).targets_metadata) -> (if (targets_director_verified) then (pre ((verified_metadata_primary_d).targets_metadata)) else (pre (previous_targets)));
+  var new_image_verified : bool = (((((verification_stage_primary) = (VERIFY_SUCCESS)) and ((false) -> (pre ((in_image).image_response)))) and ((((current_targets_director).hardware_ids).hardware_id_one) = (hardware_id))) and (((initialization).optional_features_flag) => ((true) -> ((((current_targets_director).release_counters).release_counter_one) >= (((previous_targets).release_counters).release_counter_one))))) and ((false) -> ((((current_targets_director).image_hashes).hash_one) = (pre (HashImg((in_image).image)))));
+  var new_image_verified_secondary : bool = (((((verification_stage_primary) = (VERIFY_SUCCESS)) and ((false) -> (pre ((in_image).image_response)))) and ((((current_targets_director).hardware_ids).hardware_id_two) = (hardware_id_secondary))) and (((initialization).optional_features_flag) => ((true) -> ((((current_targets_director).release_counters).release_counter_two) >= (((previous_targets).release_counters).release_counter_two))))) and ((false) -> ((((current_targets_director).image_hashes).hash_two) = (pre (HashImg((in_image).image_secondary)))));
+  var new_image_verified_secondary2 : bool = (((((verification_stage_primary) = (VERIFY_SUCCESS)) and ((false) -> (pre ((in_image).image_response)))) and ((((current_targets_director).hardware_ids).hardware_id_three) = (hardware_id_secondary2))) and (((initialization).optional_features_flag) => ((true) -> ((((current_targets_director).release_counters).release_counter_three) >= (((previous_targets).release_counters).release_counter_three))))) and ((false) -> ((((current_targets_director).image_hashes).hash_three) = (pre (HashImg((in_image).image_secondary2)))));
+  var root_director_verified : bool = (false) -> (((((((((((in_director).metadata_response).root_metadata) and ((pre (verification_stage_primary)) = (VERIFY_SUCCESS))) and ((((verified_metadata_primary_d).root_metadata).root_threshold_signatures) <= (2))) and (Match((((((in_director).metadata).root_metadata).common_payload).signatures).signature_one, (((verified_metadata_primary_d).root_metadata).root_public_keys).key_one))) and (Match((((((in_director).metadata).root_metadata).common_payload).signatures).signature_two, (((verified_metadata_primary_d).root_metadata).root_public_keys).key_two))) and ((((((in_director).metadata).root_metadata).common_payload).version) >= (pre ((((verified_metadata_primary_d).root_metadata).common_payload).version)))) and ((((((in_director).metadata).root_metadata).common_payload).expiration) > (current_time))) and (Match((((((in_director).metadata).root_metadata).common_payload).signatures).signature_one, ((((in_director).metadata).root_metadata).root_public_keys).key_one))) and (Match((((((in_director).metadata).root_metadata).common_payload).signatures).signature_two, ((((in_director).metadata).root_metadata).root_public_keys).key_two)));
+  var timestamp_director_verified : bool = (false) -> (((((((((in_director).metadata_response).timestamp_metadata) and ((pre (verification_stage_primary)) = (ROOT_D))) and ((((verified_metadata_primary_d).root_metadata).timestamp_threshold_signatures) <= (2))) and (Match((((((in_director).metadata).timestamp_metadata).common_payload).signatures).signature_one, (((verified_metadata_primary_d).root_metadata).timestamp_public_keys).key_one))) and (Match((((((in_director).metadata).timestamp_metadata).common_payload).signatures).signature_two, (((verified_metadata_primary_d).root_metadata).timestamp_public_keys).key_two))) and ((((((in_director).metadata).timestamp_metadata).common_payload).version) >= (pre ((((verified_metadata_primary_d).timestamp_metadata).common_payload).version)))) and ((((((in_director).metadata).timestamp_metadata).common_payload).expiration) > (current_time)));
+  var snapshot_director_verified : bool = (false) -> (((((((((((((((((in_director).metadata_response).snapshot_metadata) and ((pre (verification_stage_primary)) = (TIMESTAMP_D))) and ((((verified_metadata_primary_d).root_metadata).snapshot_threshold_signatures) <= (2))) and (Match((((((in_director).metadata).snapshot_metadata).common_payload).signatures).signature_one, (((verified_metadata_primary_d).root_metadata).snapshot_public_keys).key_one))) and (Match((((((in_director).metadata).snapshot_metadata).common_payload).signatures).signature_two, (((verified_metadata_primary_d).root_metadata).snapshot_public_keys).key_two))) and ((((((in_director).metadata).snapshot_metadata).common_payload).version) >= (pre ((((verified_metadata_primary_d).snapshot_metadata).common_payload).version)))) and ((((((in_director).metadata).snapshot_metadata).common_payload).expiration) > (current_time))) and ((HashSnapshot(((in_director).metadata).snapshot_metadata)) = (((verified_metadata_primary_d).timestamp_metadata).latest_snapshot_hash))) and ((((((in_director).metadata).snapshot_metadata).common_payload).version) = (((verified_metadata_primary_d).timestamp_metadata).latest_snapshot_version))) and ((((((in_director).metadata).snapshot_metadata).targets_version_numbers).version_number_one) >= (pre ((((verified_metadata_primary_d).snapshot_metadata).targets_version_numbers).version_number_one)))) and ((((((in_director).metadata).snapshot_metadata).targets_version_numbers).version_number_two) >= (pre ((((verified_metadata_primary_d).snapshot_metadata).targets_version_numbers).version_number_two)))) and ((((((in_director).metadata).snapshot_metadata).targets_version_numbers).version_number_three) >= (pre ((((verified_metadata_primary_d).snapshot_metadata).targets_version_numbers).version_number_three)))) and ((((((in_director).metadata).snapshot_metadata).targets_filenames).filename_one) = (pre ((((verified_metadata_primary_d).snapshot_metadata).targets_filenames).filename_one)))) and ((((((in_director).metadata).snapshot_metadata).targets_filenames).filename_two) = (pre ((((verified_metadata_primary_d).snapshot_metadata).targets_filenames).filename_two)))) and ((((((in_director).metadata).snapshot_metadata).targets_filenames).filename_three) = (pre ((((verified_metadata_primary_d).snapshot_metadata).targets_filenames).filename_three))));
+  var targets_director_verified : bool = (false) -> (((((((((((in_director).metadata_response).targets_metadata) and ((((((in_director).metadata).targets_metadata).common_payload).version) = ((((verified_metadata_primary_d).snapshot_metadata).targets_version_numbers).version_number_one))) and ((pre (verification_stage_primary)) = (SNAPSHOT_D))) and ((((verified_metadata_primary_d).root_metadata).targets_threshold_signatures) <= (2))) and (Match((((((in_director).metadata).targets_metadata).common_payload).signatures).signature_one, (((verified_metadata_primary_d).root_metadata).targets_public_keys).key_one))) and (Match((((((in_director).metadata).targets_metadata).common_payload).signatures).signature_two, (((verified_metadata_primary_d).root_metadata).targets_public_keys).key_two))) and ((((((in_director).metadata).targets_metadata).common_payload).version) >= (pre ((((verified_metadata_primary_d).targets_metadata).common_payload).version)))) and ((((((in_director).metadata).targets_metadata).common_payload).expiration) > (current_time))) and ((((((((in_director).metadata).targets_metadata).ecu_ids).ecu_id_one) <> (((((in_director).metadata).targets_metadata).ecu_ids).ecu_id_two)) and ((((((in_director).metadata).targets_metadata).ecu_ids).ecu_id_one) <> (((((in_director).metadata).targets_metadata).ecu_ids).ecu_id_three))) and ((((((in_director).metadata).targets_metadata).ecu_ids).ecu_id_two) <> (((((in_director).metadata).targets_metadata).ecu_ids).ecu_id_three))));
+  var root_image_verified : bool = (false) -> (((((((((((in_image).metadata_response).root_metadata) and ((pre (verification_stage_primary)) = (TARGETS_D))) and ((((verified_metadata_primary_i).root_metadata).root_threshold_signatures) <= (2))) and (Match((((((in_image).metadata).root_metadata).common_payload).signatures).signature_one, (((verified_metadata_primary_i).root_metadata).root_public_keys).key_one))) and (Match((((((in_image).metadata).root_metadata).common_payload).signatures).signature_two, (((verified_metadata_primary_i).root_metadata).root_public_keys).key_two))) and ((((((in_image).metadata).root_metadata).common_payload).version) >= (pre ((((verified_metadata_primary_i).root_metadata).common_payload).version)))) and ((((((in_image).metadata).root_metadata).common_payload).expiration) > (current_time))) and (Match((((((in_image).metadata).root_metadata).common_payload).signatures).signature_one, ((((in_image).metadata).root_metadata).root_public_keys).key_one))) and (Match((((((in_image).metadata).root_metadata).common_payload).signatures).signature_two, ((((in_image).metadata).root_metadata).root_public_keys).key_two)));
+  var timestamp_image_verified : bool = (false) -> (((((((((in_image).metadata_response).timestamp_metadata) and ((pre (verification_stage_primary)) = (ROOT_I))) and ((((verified_metadata_primary_i).root_metadata).timestamp_threshold_signatures) <= (2))) and (Match((((((in_image).metadata).timestamp_metadata).common_payload).signatures).signature_one, (((verified_metadata_primary_i).root_metadata).timestamp_public_keys).key_one))) and (Match((((((in_image).metadata).timestamp_metadata).common_payload).signatures).signature_two, (((verified_metadata_primary_i).root_metadata).timestamp_public_keys).key_two))) and ((((((in_image).metadata).timestamp_metadata).common_payload).version) >= (pre ((((verified_metadata_primary_i).timestamp_metadata).common_payload).version)))) and ((((((in_image).metadata).timestamp_metadata).common_payload).expiration) > (current_time)));
+  var snapshot_image_verified : bool = (false) -> (((((((((((((((((in_image).metadata_response).snapshot_metadata) and ((pre (verification_stage_primary)) = (TIMESTAMP_I))) and ((((verified_metadata_primary_i).root_metadata).snapshot_threshold_signatures) <= (2))) and (Match((((((in_image).metadata).snapshot_metadata).common_payload).signatures).signature_one, (((verified_metadata_primary_i).root_metadata).snapshot_public_keys).key_one))) and (Match((((((in_image).metadata).snapshot_metadata).common_payload).signatures).signature_two, (((verified_metadata_primary_i).root_metadata).snapshot_public_keys).key_two))) and ((((((in_image).metadata).snapshot_metadata).common_payload).version) >= (pre ((((verified_metadata_primary_i).snapshot_metadata).common_payload).version)))) and ((((((in_image).metadata).snapshot_metadata).common_payload).expiration) > (current_time))) and ((HashSnapshot(((in_image).metadata).snapshot_metadata)) = (((verified_metadata_primary_i).timestamp_metadata).latest_snapshot_hash))) and ((((((in_image).metadata).snapshot_metadata).common_payload).version) = (((verified_metadata_primary_i).timestamp_metadata).latest_snapshot_version))) and ((((((in_image).metadata).snapshot_metadata).targets_version_numbers).version_number_one) >= (pre ((((verified_metadata_primary_i).snapshot_metadata).targets_version_numbers).version_number_one)))) and ((((((in_image).metadata).snapshot_metadata).targets_version_numbers).version_number_two) >= (pre ((((verified_metadata_primary_i).snapshot_metadata).targets_version_numbers).version_number_two)))) and ((((((in_image).metadata).snapshot_metadata).targets_version_numbers).version_number_three) >= (pre ((((verified_metadata_primary_i).snapshot_metadata).targets_version_numbers).version_number_three)))) and ((((((in_image).metadata).snapshot_metadata).targets_filenames).filename_one) = (pre ((((verified_metadata_primary_i).snapshot_metadata).targets_filenames).filename_one)))) and ((((((in_image).metadata).snapshot_metadata).targets_filenames).filename_two) = (pre ((((verified_metadata_primary_i).snapshot_metadata).targets_filenames).filename_two)))) and ((((((in_image).metadata).snapshot_metadata).targets_filenames).filename_three) = (pre ((((verified_metadata_primary_i).snapshot_metadata).targets_filenames).filename_three))));
+  var targets_image_verified : bool = (false) -> (((((((((((in_image).metadata_response).targets_metadata) and ((pre (verification_stage_primary)) = (SNAPSHOT_I))) and ((((((in_image).metadata).targets_metadata).common_payload).version) = ((((verified_metadata_primary_i).snapshot_metadata).targets_version_numbers).version_number_one))) and ((((verified_metadata_primary_i).root_metadata).targets_threshold_signatures) <= (2))) and (Match((((((in_image).metadata).targets_metadata).common_payload).signatures).signature_one, (((verified_metadata_primary_i).root_metadata).targets_public_keys).key_one))) and (Match((((((in_image).metadata).targets_metadata).common_payload).signatures).signature_two, (((verified_metadata_primary_i).root_metadata).targets_public_keys).key_two))) and ((((((in_image).metadata).targets_metadata).common_payload).version) >= (pre ((((verified_metadata_primary_i).targets_metadata).common_payload).version)))) and ((((((in_image).metadata).targets_metadata).common_payload).expiration) > ((current_time) + (1)))) and ((((((((in_image).metadata).targets_metadata).ecu_ids).ecu_id_one) <> (((((in_image).metadata).targets_metadata).ecu_ids).ecu_id_two)) and ((((((in_image).metadata).targets_metadata).ecu_ids).ecu_id_one) <> (((((in_image).metadata).targets_metadata).ecu_ids).ecu_id_three))) and ((((((in_image).metadata).targets_metadata).ecu_ids).ecu_id_two) <> (((((in_image).metadata).targets_metadata).ecu_ids).ecu_id_three))));
+  var targets_match_verified : bool = (false) -> (((((((((((in_image).metadata_response).targets_metadata) and ((pre (verification_stage_primary)) = (TARGETS_I))) and (((((in_image).metadata).targets_metadata).image_filenames) = ((latest_targets_director).image_filenames))) and (((((in_image).metadata).targets_metadata).image_hashes) = ((latest_targets_director).image_hashes))) and (((((in_image).metadata).targets_metadata).image_file_sizes) = ((latest_targets_director).image_file_sizes))) and (((initialization).optional_features_flag) => (((((in_image).metadata).targets_metadata).release_counters) = ((latest_targets_director).release_counters)))) and (((((in_image).metadata).targets_metadata).ecu_ids) = ((latest_targets_director).ecu_ids))) and (((((in_image).metadata).targets_metadata).hardware_ids) = ((latest_targets_director).hardware_ids))) and (((initialization).optional_features_flag) => ((((((((in_image).metadata).targets_metadata).release_counters).release_counter_one) <= (((previous_targets).release_counters).release_counter_one)) and ((((((in_image).metadata).targets_metadata).release_counters).release_counter_two) <= (((previous_targets).release_counters).release_counter_two))) and ((((((in_image).metadata).targets_metadata).release_counters).release_counter_three) <= (((previous_targets).release_counters).release_counter_three)))));
+  guarantee "The Primary ECU sends the current time to the secondary" (((initialization).optional_features_flag) => (((out_secondary).current_time) = (current_time))) and (((out_secondary2).current_time) = (current_time));
+  guarantee "The primary sends the correct metadata and images to the secondary" (((out_secondary).metadata) = (verified_metadata_primary_d)) and (((out_secondary2).metadata) = (verified_metadata_primary_d));
+  guarantee "The manifest sends the correct ECU version report for the secondary in the vehicle version manifest" ((out_director).manifest_present) => (((((out_director).manifest).report_two) = (most_recent_secondary_report)) and ((((out_director).manifest).report_three) = (most_recent_secondary_report2)));
+  guarantee "The vehicle version manifest signature matches the payload" ((out_director).manifest_present) => (Match(((out_director).manifest).signature, ecu_key));
+  guarantee "The ECU version report signature matches the payload" ((out_director).manifest_present) => (Match((((out_director).manifest).report_one).signature, ecu_key));
+  guarantee "The ECU version report's ECU ID matches this ECU's ID" ((out_director).manifest_present) => (((((out_director).manifest).report_one).ecu_id) = (ecu_id));
+  guarantee "The ECU's currently installed image metadata matches the version report's information (filename, length, and hashes)" ((out_director).manifest_present) => (((((installed_image_primary).filename) = ((((out_director).manifest).report_one).image_filename)) and ((HashImg(installed_image_primary)) = ((((out_director).manifest).report_one).image_hash))) and (((installed_image_primary).length) = ((((out_director).manifest).report_one).image_length)));
+  guarantee "The ECU version report lists the current time" ((((out_director).manifest).report_one).latest_time) = (current_time);
+  guarantee "The ECU version report's nonce changes each update cycle" ((out_director).manifest_present) => (((((out_director).manifest).report_one).nonce) > (previous_nonce));
+  guarantee "The ECU downloads the correct images" (((((((out_image).image_filename) = ((((verified_metadata_primary_d).targets_metadata).image_filenames).filename_one)) and (((out_image).image_hash) = ((((verified_metadata_primary_d).targets_metadata).image_hashes).hash_one))) and (((out_image).image_filename_secondary) = ((((verified_metadata_primary_d).targets_metadata).image_filenames).filename_two))) and (((out_image).image_filename_secondary2) = ((((verified_metadata_primary_d).targets_metadata).image_filenames).filename_three))) and (((out_image).image_hash_secondary) = ((((verified_metadata_primary_d).targets_metadata).image_hashes).hash_two))) and (((out_image).image_hash_secondary2) = ((((verified_metadata_primary_d).targets_metadata).image_hashes).hash_three));
+  guarantee "The ECU does not request/distribute new images (or metadata) during metadata verification" ((((((out_image).image_request) or ((out_secondary).image_present)) or (((out_secondary).metadata_present).targets_metadata)) or ((out_secondary2).image_present)) or (((out_secondary2).metadata_present).targets_metadata)) => ((verification_stage_primary) = (VERIFY_SUCCESS));
+  guarantee "The ECU verifies images according to the standard" if (new_image_verified) then ((true) -> ((installed_image_primary) = (pre ((in_image).image)))) else ((installed_image_primary) = ((initial_image) -> (pre (installed_image_primary))));
+  guarantee "The ECU verifies images for its secondaries" if (new_image_verified_secondary) then (((true) -> (((out_secondary).image) = (pre ((in_image).image_secondary)))) and ((out_secondary).image_present)) else ((((out_secondary).image) = (((initialization).secondary_image) -> (pre ((out_secondary).image)))) and (not ((out_secondary).image_present)));
+  guarantee "The ECU verifies images for its secondaries (2)" if (new_image_verified_secondary2) then (((true) -> (((out_secondary2).image) = (pre ((in_image).image_secondary2)))) and ((out_secondary2).image_present)) else ((((out_secondary2).image) = (((initialization).secondary_image2) -> (pre ((out_secondary2).image)))) and (not ((out_secondary2).image_present)));
+  guarantee "Set ECU software version output" (ecu_software_version_primary) = ((0) -> (if (new_image_verified) then ((pre (ecu_software_version_primary)) + (1)) else (pre (ecu_software_version_primary))));
+  guarantee "Initialize metadata" ((((verified_metadata_primary_d) = ((initialization).metadata_d)) -> (true)) and (((verified_metadata_primary_i) = ((initialization).metadata_i)) -> (true))) and (((latest_targets_director) = (((initialization).metadata_d).targets_metadata)) -> (true));
+  guarantee "The Primary is initialized at the beginning of the verification steps" ((verification_stage_primary) = (VERIFY_SUCCESS)) -> (true);
+  guarantee "There is no recovery from failed metadata verification" (true) -> ((pre ((verification_stage_primary) = (VERIFY_FAIL))) => ((verification_stage_primary) = (VERIFY_FAIL)));
+  guarantee "Full verification: Root metadata from Director repo" (true) -> (if (root_director_verified) then (((((verified_metadata_primary_d).root_metadata) = (((in_director).metadata).root_metadata)) and (((out_director).metadata_request).timestamp_metadata)) and ((verification_stage_primary) = (ROOT_D))) else ((((verified_metadata_primary_d).root_metadata) = (pre ((verified_metadata_primary_d).root_metadata))) and ((verification_stage_primary) <> (ROOT_D))));
+  guarantee "Full verification: Timestamp metadata from Director repo" (true) -> (if (timestamp_director_verified) then (((((verified_metadata_primary_d).timestamp_metadata) = (((in_director).metadata).timestamp_metadata)) and (((out_director).metadata_request).snapshot_metadata)) and ((verification_stage_primary) = (TIMESTAMP_D))) else ((((verified_metadata_primary_d).timestamp_metadata) = (pre ((verified_metadata_primary_d).timestamp_metadata))) and ((verification_stage_primary) <> (TIMESTAMP_D))));
+  guarantee "Full verification: Snapshot metadata from Director repo" (true) -> (if (snapshot_director_verified) then (((((verified_metadata_primary_d).snapshot_metadata) = (((in_director).metadata).snapshot_metadata)) and (((out_director).metadata_request).targets_metadata)) and ((verification_stage_primary) = (SNAPSHOT_D))) else (((((verified_metadata_primary_d).snapshot_metadata) = (pre ((verified_metadata_primary_d).snapshot_metadata))) and (not (((out_director).metadata_request).targets_metadata))) and ((verification_stage_primary) <> (SNAPSHOT_D))));
+  guarantee "Full verification: Targets metadata from Director repo" (true) -> (if (targets_director_verified) then ((((((verified_metadata_primary_d).targets_metadata) = (((in_director).metadata).targets_metadata)) and ((latest_targets_director) = (((in_director).metadata).targets_metadata))) and (((out_director).metadata_request).root_metadata)) and ((verification_stage_primary) = (TARGETS_D))) else (((((verified_metadata_primary_d).targets_metadata) = (pre ((verified_metadata_primary_d).targets_metadata))) and ((latest_targets_director) = (pre (latest_targets_director)))) and ((verification_stage_primary) <> (TARGETS_D))));
+  guarantee "Full verification: Root metadata from Image repo" (true) -> (if (root_image_verified) then (((((verified_metadata_primary_i).root_metadata) = (((in_image).metadata).root_metadata)) and (((out_image).metadata_request).timestamp_metadata)) and ((verification_stage_primary) = (ROOT_I))) else ((((verified_metadata_primary_i).root_metadata) = (pre ((verified_metadata_primary_i).root_metadata))) and ((verification_stage_primary) <> (ROOT_I))));
+  guarantee "Full verification: Timestamp metadata from Image repo" (true) -> (if (timestamp_image_verified) then (((((verified_metadata_primary_i).timestamp_metadata) = (((in_image).metadata).timestamp_metadata)) and (((out_image).metadata_request).snapshot_metadata)) and ((verification_stage_primary) = (TIMESTAMP_I))) else ((((verified_metadata_primary_i).timestamp_metadata) = (pre ((verified_metadata_primary_i).timestamp_metadata))) and ((verification_stage_primary) <> (TIMESTAMP_I))));
+  guarantee "Full verification: Snapshot metadata from Image repo" (true) -> (if (snapshot_image_verified) then (((((verified_metadata_primary_i).snapshot_metadata) = (((in_image).metadata).snapshot_metadata)) and (((out_image).metadata_request).targets_metadata)) and ((verification_stage_primary) = (SNAPSHOT_I))) else ((((verified_metadata_primary_i).snapshot_metadata) = (pre ((verified_metadata_primary_i).snapshot_metadata))) and ((verification_stage_primary) <> (SNAPSHOT_I))));
+  guarantee "Full verification: Targets metadata from Image repo" (true) -> (if (targets_image_verified) then (((((verified_metadata_primary_i).targets_metadata) = (((in_image).metadata).targets_metadata)) and (((out_image).metadata_request).targets_metadata)) and ((verification_stage_primary) = (TARGETS_I))) else ((((verified_metadata_primary_i).targets_metadata) = (pre ((verified_metadata_primary_i).targets_metadata))) and ((verification_stage_primary) <> (TARGETS_I))));
+  guarantee "Full verification: Targets match between Director and Image repos" (true) -> (if (targets_match_verified) then ((((verification_stage_primary) = (VERIFY_SUCCESS)) and (((out_secondary).metadata_present).targets_metadata)) and (((out_secondary2).metadata_present).targets_metadata)) else (((((pre (verification_stage_primary)) <> (VERIFY_SUCCESS)) => ((verification_stage_primary) <> (VERIFY_SUCCESS))) and (not (((out_secondary).metadata_present).targets_metadata))) and (not (((out_secondary2).metadata_present).targets_metadata))));
+  guarantee "Set the probe" (latest_manifest) = (((initialization).manifest) -> (if ((out_director).manifest_present) then ((out_director).manifest) else (pre (latest_manifest))));
+*)
+
+node imported SecondaryECU (
+  initialization : InitializationBus_dot_impl;
+  in_primary : PrimaryToSecondary_dot_impl
+) returns (
+  out_primary : SecondaryToPrimary_dot_impl;
+  installed_image_secondary : Image_dot_impl;
+  verification_stage_secondary : VerificationStage;
+  verified_metadata_secondary : Metadata_dot_impl;
+  ecu_software_version_secondary : int;
+  ecu_metadata_version_secondary : int
+);
+(*@contract
+  var ecu_id : int = ((initialization).ecu_id_two) -> (pre (ecu_id));
+  var ecu_key : int = ((initialization).ecu_key_two) -> (pre (ecu_key));
+  var hardware_id : int = ((initialization).hardware_id_two) -> (pre (hardware_id));
+  var initial_image : Image_dot_impl = ((initialization).secondary_image) -> (pre (initial_image));
+  var initial_targets : TargetsMetadata_dot_impl = (((initialization).metadata_d).targets_metadata) -> (pre (initial_targets));
+  var previous_nonce : int = (0) -> (if (pre ((out_primary).report_present)) then (pre (((out_primary).ecu_version_report).nonce)) else (pre (previous_nonce)));
+  var current_time : int = (0) -> (if ((in_primary).time_present) then ((in_primary).current_time) else (pre (current_time)));
+  var new_targets : TargetsMetadata_dot_impl = ((in_primary).metadata).targets_metadata;
+  var current_targets : TargetsMetadata_dot_impl = (verified_metadata_secondary).targets_metadata;
+  var previous_targets : TargetsMetadata_dot_impl = (((initialization).metadata_d).targets_metadata) -> (if (new_metadata_verified) then (pre ((verified_metadata_secondary).targets_metadata)) else (pre (previous_targets)));
+  var new_image_verified : bool = ((((false) -> (pre ((in_primary).image_present))) and ((((current_targets).hardware_ids).hardware_id_two) = (hardware_id))) and (((initialization).optional_features_flag) => ((true) -> ((((current_targets).release_counters).release_counter_two) >= (((previous_targets).release_counters).release_counter_two))))) and ((false) -> ((((current_targets).image_hashes).hash_two) = (pre (HashImg((in_primary).image)))));
+  var new_metadata_verified : bool = (false) -> (((((((((in_primary).metadata_present).targets_metadata) and ((((verified_metadata_secondary).root_metadata).targets_threshold_signatures) <= (2))) and (Match((((new_targets).common_payload).signatures).signature_one, (((verified_metadata_secondary).root_metadata).targets_public_keys).key_one))) and (Match((((new_targets).common_payload).signatures).signature_two, (((verified_metadata_secondary).root_metadata).targets_public_keys).key_two))) and ((((new_targets).common_payload).version) >= (((current_targets).common_payload).version))) and ((((new_targets).common_payload).expiration) > (current_time))) and ((((((new_targets).ecu_ids).ecu_id_one) <> (((new_targets).ecu_ids).ecu_id_two)) and ((((new_targets).ecu_ids).ecu_id_one) <> (((new_targets).ecu_ids).ecu_id_three))) and ((((new_targets).ecu_ids).ecu_id_two) <> (((new_targets).ecu_ids).ecu_id_three))));
+  guarantee "The Secondary ECU sends a version report if and only if it receives a request from the Primary" ((out_primary).report_present) = ((false) -> ((pre (in_primary)).report_request));
+  guarantee "The ECU version report signature matches the payload" ((out_primary).report_present) => (Match(((out_primary).ecu_version_report).signature, ecu_key));
+  guarantee "The ECU version report's ECU ID matches this ECU's ID" ((out_primary).report_present) => ((((out_primary).ecu_version_report).ecu_id) = (ecu_id));
+  guarantee "The ECU's currently installed image metadata matches the version report's information (filename, length, and hashes)" ((out_primary).report_present) => (((((installed_image_secondary).filename) = (((out_primary).ecu_version_report).image_filename)) and ((HashImg(installed_image_secondary)) = (((out_primary).ecu_version_report).image_hash))) and (((installed_image_secondary).length) = (((out_primary).ecu_version_report).image_length)));
+  guarantee "The ECU version report lists the current time" (((out_primary).ecu_version_report).latest_time) = (current_time);
+  guarantee "The ECU version report's nonce changes each update cycle" ((out_primary).report_present) => ((((out_primary).ecu_version_report).nonce) > (previous_nonce));
+  guarantee "The Secondary ECU verifies images according to the standard" if (new_image_verified) then ((true) -> ((installed_image_secondary) = (pre ((in_primary).image)))) else ((installed_image_secondary) = ((initial_image) -> (pre (installed_image_secondary))));
+  guarantee "Set ECU software version output" (ecu_software_version_secondary) = ((0) -> (if (new_image_verified) then ((pre (ecu_software_version_secondary)) + (1)) else (pre (ecu_software_version_secondary))));
+  guarantee "Initialize metadata" ((verified_metadata_secondary) = ((initialization).metadata_d)) -> (true);
+  guarantee "The Secondary ECU verifies metadata according to the standard (partial verification)" if (new_metadata_verified) then (((true) -> (((verified_metadata_secondary).targets_metadata) = (new_targets))) and ((ecu_metadata_version_secondary) = ((1) -> ((pre (ecu_metadata_version_secondary)) + (1))))) else ((((verified_metadata_secondary).targets_metadata) = ((initial_targets) -> (pre ((verified_metadata_secondary).targets_metadata)))) and ((ecu_metadata_version_secondary) = ((1) -> (pre (ecu_metadata_version_secondary)))));
+  guarantee "Metadata frame conditions" (true) -> (((((verified_metadata_secondary).root_metadata) = (pre ((verified_metadata_secondary).root_metadata))) and (((verified_metadata_secondary).timestamp_metadata) = (pre ((verified_metadata_secondary).timestamp_metadata)))) and (((verified_metadata_secondary).snapshot_metadata) = (pre ((verified_metadata_secondary).snapshot_metadata))));
+*)
+
+node imported SecondaryECU2 (
+  initialization : InitializationBus_dot_impl;
+  in_primary : PrimaryToSecondary_dot_impl
+) returns (
+  out_primary : SecondaryToPrimary_dot_impl;
+  installed_image_secondary : Image_dot_impl;
+  verification_stage_secondary : VerificationStage;
+  verified_metadata_secondary : Metadata_dot_impl;
+  ecu_software_version_secondary : int
+);
+(*@contract
+  var ecu_id : int = ((initialization).ecu_id_three) -> (pre (ecu_id));
+  var ecu_key : int = ((initialization).ecu_key_three) -> (pre (ecu_key));
+  var hardware_id : int = ((initialization).hardware_id_three) -> (pre (hardware_id));
+  var initial_image : Image_dot_impl = ((initialization).secondary_image2) -> (pre (initial_image));
+  var initial_targets : TargetsMetadata_dot_impl = (((initialization).metadata_d).targets_metadata) -> (pre (initial_targets));
+  var previous_nonce : int = (0) -> (if (pre ((out_primary).report_present)) then (pre (((out_primary).ecu_version_report).nonce)) else (pre (previous_nonce)));
+  var current_time : int = (0) -> (if ((in_primary).time_present) then ((in_primary).current_time) else (pre (current_time)));
+  var new_targets : TargetsMetadata_dot_impl = ((in_primary).metadata).targets_metadata;
+  var current_targets : TargetsMetadata_dot_impl = (verified_metadata_secondary).targets_metadata;
+  var previous_targets : TargetsMetadata_dot_impl = (((initialization).metadata_d).targets_metadata) -> (if (new_metadata_verified) then (pre ((verified_metadata_secondary).targets_metadata)) else (pre (previous_targets)));
+  var new_image_verified : bool = ((((false) -> (pre ((in_primary).image_present))) and ((((current_targets).hardware_ids).hardware_id_three) = (hardware_id))) and (((initialization).optional_features_flag) => ((true) -> ((((current_targets).release_counters).release_counter_three) >= (((previous_targets).release_counters).release_counter_three))))) and ((false) -> ((((current_targets).image_hashes).hash_three) = (pre (HashImg((in_primary).image)))));
+  var new_metadata_verified : bool = (false) -> (((((((((in_primary).metadata_present).targets_metadata) and ((((verified_metadata_secondary).root_metadata).targets_threshold_signatures) <= (2))) and (Match((((new_targets).common_payload).signatures).signature_one, (((verified_metadata_secondary).root_metadata).targets_public_keys).key_one))) and (Match((((new_targets).common_payload).signatures).signature_two, (((verified_metadata_secondary).root_metadata).targets_public_keys).key_two))) and ((((new_targets).common_payload).version) >= (((current_targets).common_payload).version))) and ((((new_targets).common_payload).expiration) > (current_time))) and ((((((new_targets).ecu_ids).ecu_id_one) <> (((new_targets).ecu_ids).ecu_id_two)) and ((((new_targets).ecu_ids).ecu_id_one) <> (((new_targets).ecu_ids).ecu_id_three))) and ((((new_targets).ecu_ids).ecu_id_two) <> (((new_targets).ecu_ids).ecu_id_three))));
+  guarantee "The Secondary ECU sends a version report if and only if it receives a request from the Primary" ((out_primary).report_present) = ((false) -> ((pre (in_primary)).report_request));
+  guarantee "The ECU version report signature matches the payload" ((out_primary).report_present) => (Match(((out_primary).ecu_version_report).signature, ecu_key));
+  guarantee "The ECU version report's ECU ID matches this ECU's ID" ((out_primary).report_present) => ((((out_primary).ecu_version_report).ecu_id) = (ecu_id));
+  guarantee "The ECU's currently installed image metadata matches the version report's information (filename, length, and hashes)" ((out_primary).report_present) => (((((installed_image_secondary).filename) = (((out_primary).ecu_version_report).image_filename)) and ((HashImg(installed_image_secondary)) = (((out_primary).ecu_version_report).image_hash))) and (((installed_image_secondary).length) = (((out_primary).ecu_version_report).image_length)));
+  guarantee "The ECU version report lists the current time" (((out_primary).ecu_version_report).latest_time) = (current_time);
+  guarantee "The ECU version report's nonce changes each update cycle" ((out_primary).report_present) => ((((out_primary).ecu_version_report).nonce) > (previous_nonce));
+  guarantee "The Secondary ECU verifies images according to the standard" if (new_image_verified) then ((true) -> ((installed_image_secondary) = (pre ((in_primary).image)))) else ((installed_image_secondary) = ((initial_image) -> (pre (installed_image_secondary))));
+  guarantee "Set ECU software version output" (ecu_software_version_secondary) = ((0) -> (if (new_image_verified) then ((pre (ecu_software_version_secondary)) + (1)) else (pre (ecu_software_version_secondary))));
+  guarantee "Initialize metadata" ((verified_metadata_secondary) = ((initialization).metadata_d)) -> (true);
+  guarantee "The Secondary ECU verifies metadata according to the standard (partial verification)" if (new_metadata_verified) then ((true) -> (((verified_metadata_secondary).targets_metadata) = (new_targets))) else (((verified_metadata_secondary).targets_metadata) = ((initial_targets) -> (pre ((verified_metadata_secondary).targets_metadata))));
+  guarantee "Metadata frame conditions" (true) -> (((((verified_metadata_secondary).root_metadata) = (pre ((verified_metadata_secondary).root_metadata))) and (((verified_metadata_secondary).timestamp_metadata) = (pre ((verified_metadata_secondary).timestamp_metadata)))) and (((verified_metadata_secondary).snapshot_metadata) = (pre ((verified_metadata_secondary).snapshot_metadata))));
+*)
+
+node imported TimeServer (
+
+) returns (
+  out_primary : TimeServerToPrimary_dot_impl;
+  probe_time_server : int
+);
+(*@contract
+  guarantee "Time is strictly increasing" ((out_primary).current_time) = ((0) -> ((pre ((out_primary).current_time)) + (1)));
+  guarantee "Set probe" (probe_time_server) = ((out_primary).current_time);
+*)
+
+node imported UptaneSystem (
+  initialization : InitializationBus_dot_impl
+) returns (
+  installed_image_primary : Image_dot_impl;
+  installed_image_secondary : Image_dot_impl;
+  installed_image_secondary2 : Image_dot_impl;
+  verification_stage_primary : VerificationStage;
+  verification_stage_secondary : VerificationStage;
+  verification_stage_secondary2 : VerificationStage;
+  verified_metadata_primary_d : Metadata_dot_impl;
+  verified_metadata_primary_i : Metadata_dot_impl;
+  latest_targets_director_primary : TargetsMetadata_dot_impl;
+  verified_metadata_secondary : Metadata_dot_impl;
+  verified_metadata_secondary2 : Metadata_dot_impl;
+  ecu_software_version_primary : int;
+  ecu_software_version_secondary1 : int;
+  ecu_software_version_secondary2 : int;
+  ecu_metadata_version_secondary : int;
+  director_latest_targets : TargetsMetadata_dot_impl;
+  director_latest_manifest : VehicleVersionManifest_dot_impl;
+  primary_latest_manifest : VehicleVersionManifest_dot_impl;
+  probe_time_server : int
+);
+(*@contract
+  var hardware_id_primary : int = ((initialization).hardware_id_one) -> (pre (hardware_id_primary));
+  var hardware_id_secondary : int = ((initialization).hardware_id_two) -> (pre (hardware_id_secondary));
+  var hardware_id_secondary2 : int = ((initialization).hardware_id_three) -> (pre (hardware_id_secondary2));
+  weakly assume "image_repo_port_out_primary is not instrumented" not (image_repo_port_out_primary_instrumented);
+  weakly assume "primary_ecu_port_out_secondary is not instrumented" not (primary_ecu_port_out_secondary_instrumented);
+  weakly assume "time_server_port_out_primary is not instrumented" not (time_server_port_out_primary_instrumented);
+  weakly assume "secondary_ecu_port_out_primary is not instrumented" not (secondary_ecu_port_out_primary_instrumented);
+  weakly assume "primary_ecu_port_out_image is not instrumented" not (primary_ecu_port_out_image_instrumented);
+  weakly assume "director_repo_port_out_primary is not instrumented" not (director_repo_port_out_primary_instrumented);
+  weakly assume "primary_ecu_port_out_secondary2 is not instrumented" not (primary_ecu_port_out_secondary2_instrumented);
+  weakly assume "primary_ecu_port_out_director is not instrumented" not (primary_ecu_port_out_director_instrumented);
+  weakly assume "secondary_ecu2_port_out_primary is not instrumented" not (secondary_ecu2_port_out_primary_instrumented);
+  assume "Set optional features flag" (((initialization).optional_features_flag) = (true)) and ((true) -> (((initialization).optional_features_flag) = (pre ((initialization).optional_features_flag))));
+  assume "The ECUs are initialized with a legitimate software image" (((((AuthoredByOem(HashImg((initialization).primary_image))) and (AuthoredByOem(HashImg((initialization).secondary_image)))) and (AuthoredByOem(HashImg((initialization).secondary_image2)))) and (AuthoredByOem(((((initialization).metadata_d).targets_metadata).image_hashes).hash_one))) and (AuthoredByOem(((((initialization).metadata_d).targets_metadata).image_hashes).hash_two))) and (AuthoredByOem(((((initialization).metadata_d).targets_metadata).image_hashes).hash_three));
+  assume "The ECUs are initialized with compatible images and targets metadata for compatible images" ((Compatible3(((initialization).primary_image).filename, ((initialization).secondary_image).filename, ((initialization).secondary_image2).filename)) and (Compatible3(((((initialization).metadata_d).targets_metadata).image_filenames).filename_one, ((((initialization).metadata_d).targets_metadata).image_filenames).filename_two, ((((initialization).metadata_d).targets_metadata).image_filenames).filename_three))) and (Compatible(((initialization).secondary_image).filename, (initialization).hardware_id_two));
+  assume "The ECUs are initialized with valid targets metadata" (((((((initialization).metadata_d).targets_metadata).hardware_ids).hardware_id_one) = ((initialization).hardware_id_one)) and ((((((initialization).metadata_d).targets_metadata).hardware_ids).hardware_id_two) = ((initialization).hardware_id_two))) and ((((((initialization).metadata_d).targets_metadata).hardware_ids).hardware_id_three) = ((initialization).hardware_id_three));
+  guarantee "Freeze" (true) -> (((ecu_metadata_version_secondary) > (pre (ecu_metadata_version_secondary))) => (((verified_metadata_secondary).targets_metadata) = (director_latest_targets)));
+  guarantee "Mixed-bundles" (((ecu_software_version_primary) = (ecu_software_version_secondary1)) and ((ecu_software_version_primary) = (ecu_software_version_secondary2))) => (Compatible3((installed_image_primary).filename, (installed_image_secondary).filename, (installed_image_secondary2).filename));
+  guarantee "Mix-and-match" Compatible3((((verified_metadata_primary_d).targets_metadata).image_filenames).filename_one, (((verified_metadata_primary_d).targets_metadata).image_filenames).filename_two, (((verified_metadata_primary_d).targets_metadata).image_filenames).filename_three);
+  guarantee "Rollback" (true) -> (((installed_image_secondary).version) >= (pre ((installed_image_secondary).version)));
+  guarantee "Arbitrary software" AuthoredByOem(HashImg(installed_image_secondary));
+  guarantee "Faulty bundle" ((director_latest_manifest) <> (pre (director_latest_manifest))) => ((director_latest_manifest) = (primary_latest_manifest));
+  guarantee "Incompatible image" Compatible((installed_image_secondary).filename, hardware_id_secondary);
+*)
+
+node imported primary_ecu_Inst_director_repo_port_in_primary (
+  in_primary : PrimaryToDirector_dot_impl
+) returns (
+  out_director_instrumented : PrimaryToDirector_dot_impl
+);
+(*@contract
+  guarantee true;
+*)
+
+node imported image_repo_Inst_primary_ecu_port_in_image (
+  in_image : ImageToPrimary_dot_impl
+) returns (
+  out_primary_instrumented : ImageToPrimary_dot_impl
+);
+(*@contract
+  guarantee true;
+*)
+
+node imported primary_ecu_Inst_image_repo_port_in_primary (
+  in_primary : PrimaryToImage_dot_impl
+) returns (
+  out_image_instrumented : PrimaryToImage_dot_impl
+);
+(*@contract
+  guarantee true;
+*)
+
+node imported secondary_ecu_Inst_primary_ecu_port_in_secondary (
+  in_secondary : SecondaryToPrimary_dot_impl
+) returns (
+  out_primary_instrumented : SecondaryToPrimary_dot_impl
+);
+(*@contract
+  guarantee true;
+*)
+
+node imported director_repo_Inst_primary_ecu_port_in_director (
+  in_director : DirectorToPrimary_dot_impl
+) returns (
+  out_primary_instrumented : DirectorToPrimary_dot_impl
+);
+(*@contract
+  guarantee true;
+*)
+
+node imported primary_ecu_Inst_secondary_ecu2_port_in_primary (
+  in_primary : PrimaryToSecondary_dot_impl
+) returns (
+  out_secondary2_instrumented : PrimaryToSecondary_dot_impl
+);
+(*@contract
+  guarantee true;
+*)
+
+node imported secondary_ecu2_Inst_primary_ecu_port_in_secondary2 (
+  in_secondary2 : SecondaryToPrimary_dot_impl
+) returns (
+  out_primary_instrumented : SecondaryToPrimary_dot_impl
+);
+(*@contract
+  guarantee true;
+*)
+
+node imported primary_ecu_Inst_secondary_ecu_port_in_primary (
+  in_primary : PrimaryToSecondary_dot_impl
+) returns (
+  out_secondary_instrumented : PrimaryToSecondary_dot_impl
+);
+(*@contract
+  guarantee true;
+*)
+
+node imported time_server_Inst_primary_ecu_port_in_time_server (
+  in_time_server : TimeServerToPrimary_dot_impl
+) returns (
+  out_primary_instrumented : TimeServerToPrimary_dot_impl
+);
+(*@contract
+  guarantee true;
+*)
+
+
+node UptaneSystem_dot_Impl (
+  initialization : InitializationBus_dot_impl
+) returns (
+  installed_image_primary : Image_dot_impl;
+  installed_image_secondary : Image_dot_impl;
+  installed_image_secondary2 : Image_dot_impl;
+  verification_stage_primary : VerificationStage;
+  verification_stage_secondary : VerificationStage;
+  verification_stage_secondary2 : VerificationStage;
+  verified_metadata_primary_d : Metadata_dot_impl;
+  verified_metadata_primary_i : Metadata_dot_impl;
+  latest_targets_director_primary : TargetsMetadata_dot_impl;
+  verified_metadata_secondary : Metadata_dot_impl;
+  verified_metadata_secondary2 : Metadata_dot_impl;
+  ecu_software_version_primary : int;
+  ecu_software_version_secondary1 : int;
+  ecu_software_version_secondary2 : int;
+  ecu_metadata_version_secondary : int;
+  director_latest_targets : TargetsMetadata_dot_impl;
+  director_latest_manifest : VehicleVersionManifest_dot_impl;
+  primary_latest_manifest : VehicleVersionManifest_dot_impl;
+  probe_time_server : int
+);
+(*@contract
+  var hardware_id_primary : int = ((initialization).hardware_id_one) -> (pre (hardware_id_primary));
+  var hardware_id_secondary : int = ((initialization).hardware_id_two) -> (pre (hardware_id_secondary));
+  var hardware_id_secondary2 : int = ((initialization).hardware_id_three) -> (pre (hardware_id_secondary2));
+  weakly assume "image_repo_port_out_primary is instrumented" (image_repo_port_out_primary_instrumented);
+  weakly assume "primary_ecu_port_out_secondary is instrumented" (primary_ecu_port_out_secondary_instrumented);
+  weakly assume "time_server_port_out_primary is instrumented" (time_server_port_out_primary_instrumented);
+  weakly assume "secondary_ecu_port_out_primary is instrumented" (secondary_ecu_port_out_primary_instrumented);
+  weakly assume "primary_ecu_port_out_image is instrumented" (primary_ecu_port_out_image_instrumented);
+  weakly assume "director_repo_port_out_primary is instrumented" (director_repo_port_out_primary_instrumented);
+  weakly assume "primary_ecu_port_out_secondary2 is instrumented" (primary_ecu_port_out_secondary2_instrumented);
+  weakly assume "primary_ecu_port_out_director is instrumented" (primary_ecu_port_out_director_instrumented);
+  weakly assume "secondary_ecu2_port_out_primary is instrumented" (secondary_ecu2_port_out_primary_instrumented);
+  assume "Set optional features flag" (((initialization).optional_features_flag) = (true)) and ((true) -> (((initialization).optional_features_flag) = (pre ((initialization).optional_features_flag))));
+  assume "The ECUs are initialized with a legitimate software image" (((((AuthoredByOem(HashImg((initialization).primary_image))) and (AuthoredByOem(HashImg((initialization).secondary_image)))) and (AuthoredByOem(HashImg((initialization).secondary_image2)))) and (AuthoredByOem(((((initialization).metadata_d).targets_metadata).image_hashes).hash_one))) and (AuthoredByOem(((((initialization).metadata_d).targets_metadata).image_hashes).hash_two))) and (AuthoredByOem(((((initialization).metadata_d).targets_metadata).image_hashes).hash_three));
+  assume "The ECUs are initialized with compatible images and targets metadata for compatible images" ((Compatible3(((initialization).primary_image).filename, ((initialization).secondary_image).filename, ((initialization).secondary_image2).filename)) and (Compatible3(((((initialization).metadata_d).targets_metadata).image_filenames).filename_one, ((((initialization).metadata_d).targets_metadata).image_filenames).filename_two, ((((initialization).metadata_d).targets_metadata).image_filenames).filename_three))) and (Compatible(((initialization).secondary_image).filename, (initialization).hardware_id_two));
+  assume "The ECUs are initialized with valid targets metadata" (((((((initialization).metadata_d).targets_metadata).hardware_ids).hardware_id_one) = ((initialization).hardware_id_one)) and ((((((initialization).metadata_d).targets_metadata).hardware_ids).hardware_id_two) = ((initialization).hardware_id_two))) and ((((((initialization).metadata_d).targets_metadata).hardware_ids).hardware_id_three) = ((initialization).hardware_id_three));
+  guarantee "Freeze" (true) -> (((ecu_metadata_version_secondary) > (pre (ecu_metadata_version_secondary))) => (((verified_metadata_secondary).targets_metadata) = (director_latest_targets)));
+  guarantee "Mixed-bundles" (((ecu_software_version_primary) = (ecu_software_version_secondary1)) and ((ecu_software_version_primary) = (ecu_software_version_secondary2))) => (Compatible3((installed_image_primary).filename, (installed_image_secondary).filename, (installed_image_secondary2).filename));
+  guarantee "Mix-and-match" Compatible3((((verified_metadata_primary_d).targets_metadata).image_filenames).filename_one, (((verified_metadata_primary_d).targets_metadata).image_filenames).filename_two, (((verified_metadata_primary_d).targets_metadata).image_filenames).filename_three);
+  guarantee "Rollback" (true) -> (((installed_image_secondary).version) >= (pre ((installed_image_secondary).version)));
+  guarantee "Arbitrary software" AuthoredByOem(HashImg(installed_image_secondary));
+  guarantee "Faulty bundle" ((director_latest_manifest) <> (pre (director_latest_manifest))) => ((director_latest_manifest) = (primary_latest_manifest));
+  guarantee "Incompatible image" Compatible((installed_image_secondary).filename, hardware_id_secondary);
+*)
+var
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_director_repo_port_out_primary : DirectorToPrimary_dot_impl;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_director_repo_port_latest_targets : TargetsMetadata_dot_impl;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_director_repo_port_latest_manifest : VehicleVersionManifest_dot_impl;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_image_repo_port_out_primary : ImageToPrimary_dot_impl;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_out_director : PrimaryToDirector_dot_impl;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_out_image : PrimaryToImage_dot_impl;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_out_secondary : PrimaryToSecondary_dot_impl;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_out_secondary2 : PrimaryToSecondary_dot_impl;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_installed_image_primary : Image_dot_impl;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_verification_stage_primary : VerificationStage;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_verified_metadata_primary_d : Metadata_dot_impl;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_verified_metadata_primary_i : Metadata_dot_impl;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_latest_targets_director : TargetsMetadata_dot_impl;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_ecu_software_version_primary : int;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_latest_manifest : VehicleVersionManifest_dot_impl;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu_port_out_primary : SecondaryToPrimary_dot_impl;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu_port_installed_image_secondary : Image_dot_impl;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu_port_verification_stage_secondary : VerificationStage;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu_port_verified_metadata_secondary : Metadata_dot_impl;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu_port_ecu_software_version_secondary : int;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu_port_ecu_metadata_version_secondary : int;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu2_port_out_primary : SecondaryToPrimary_dot_impl;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu2_port_installed_image_secondary : Image_dot_impl;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu2_port_verification_stage_secondary : VerificationStage;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu2_port_verified_metadata_secondary : Metadata_dot_impl;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu2_port_ecu_software_version_secondary : int;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_time_server_port_out_primary : TimeServerToPrimary_dot_impl;
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_time_server_port_probe_time_server : int;
+  c2_port_out_director : PrimaryToDirector_dot_impl;
+  c3_port_out_primary : ImageToPrimary_dot_impl;
+  c4_port_out_image : PrimaryToImage_dot_impl;
+  c6_port_out_primary : SecondaryToPrimary_dot_impl;
+  c1_port_out_primary : DirectorToPrimary_dot_impl;
+  c14_port_out_secondary2 : PrimaryToSecondary_dot_impl;
+  c15_port_out_primary : SecondaryToPrimary_dot_impl;
+  c5_port_out_secondary : PrimaryToSecondary_dot_impl;
+  c7_port_out_primary : TimeServerToPrimary_dot_impl;
+let
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_director_repo_port_out_primary, Uptane_double_colon_UptaneSystem_dot_Impl_dot_director_repo_port_latest_targets, Uptane_double_colon_UptaneSystem_dot_Impl_dot_director_repo_port_latest_manifest = DirectorRepo(initialization, c2_port_out_director);
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_image_repo_port_out_primary = ImageRepo(initialization, c4_port_out_image);
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_out_director, Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_out_image, Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_out_secondary, Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_out_secondary2, Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_installed_image_primary, Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_verification_stage_primary, Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_verified_metadata_primary_d, Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_verified_metadata_primary_i, Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_latest_targets_director, Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_ecu_software_version_primary, Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_latest_manifest = PrimaryEcu(initialization, c1_port_out_primary, c3_port_out_primary, c6_port_out_primary, c15_port_out_primary, c7_port_out_primary);
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu_port_out_primary, Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu_port_installed_image_secondary, Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu_port_verification_stage_secondary, Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu_port_verified_metadata_secondary, Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu_port_ecu_software_version_secondary, Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu_port_ecu_metadata_version_secondary = SecondaryECU(initialization, c5_port_out_secondary);
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu2_port_out_primary, Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu2_port_installed_image_secondary, Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu2_port_verification_stage_secondary, Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu2_port_verified_metadata_secondary, Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu2_port_ecu_software_version_secondary = SecondaryECU2(initialization, c14_port_out_secondary2);
+  Uptane_double_colon_UptaneSystem_dot_Impl_dot_time_server_port_out_primary, Uptane_double_colon_UptaneSystem_dot_Impl_dot_time_server_port_probe_time_server = TimeServer();
+  c2_port_out_director = primary_ecu_Inst_director_repo_port_in_primary_dot_Impl(Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_out_director);
+  c3_port_out_primary = image_repo_Inst_primary_ecu_port_in_image_dot_Impl(Uptane_double_colon_UptaneSystem_dot_Impl_dot_image_repo_port_out_primary);
+  c4_port_out_image = primary_ecu_Inst_image_repo_port_in_primary_dot_Impl(Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_out_image);
+  c6_port_out_primary = secondary_ecu_Inst_primary_ecu_port_in_secondary_dot_Impl(Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu_port_out_primary);
+  c1_port_out_primary = director_repo_Inst_primary_ecu_port_in_director_dot_Impl(Uptane_double_colon_UptaneSystem_dot_Impl_dot_director_repo_port_out_primary);
+  c14_port_out_secondary2 = primary_ecu_Inst_secondary_ecu2_port_in_primary_dot_Impl(Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_out_secondary2);
+  c15_port_out_primary = secondary_ecu2_Inst_primary_ecu_port_in_secondary2_dot_Impl(Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu2_port_out_primary);
+  c5_port_out_secondary = primary_ecu_Inst_secondary_ecu_port_in_primary_dot_Impl(Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_out_secondary);
+  c7_port_out_primary = time_server_Inst_primary_ecu_port_in_time_server_dot_Impl(Uptane_double_colon_UptaneSystem_dot_Impl_dot_time_server_port_out_primary);
+  installed_image_primary = Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_installed_image_primary;
+  installed_image_secondary = Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu_port_installed_image_secondary;
+  installed_image_secondary2 = Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu2_port_installed_image_secondary;
+  verification_stage_secondary = Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu_port_verification_stage_secondary;
+  verification_stage_secondary2 = Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu2_port_verification_stage_secondary;
+  verification_stage_primary = Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_verification_stage_primary;
+  verified_metadata_primary_d = Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_verified_metadata_primary_d;
+  verified_metadata_primary_i = Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_verified_metadata_primary_i;
+  verified_metadata_secondary = Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu_port_verified_metadata_secondary;
+  verified_metadata_secondary2 = Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu2_port_verified_metadata_secondary;
+  probe_time_server = Uptane_double_colon_UptaneSystem_dot_Impl_dot_time_server_port_probe_time_server;
+  ecu_software_version_primary = Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_ecu_software_version_primary;
+  ecu_software_version_secondary1 = Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu_port_ecu_software_version_secondary;
+  ecu_software_version_secondary2 = Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu2_port_ecu_software_version_secondary;
+  latest_targets_director_primary = Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_latest_targets_director;
+  director_latest_targets = Uptane_double_colon_UptaneSystem_dot_Impl_dot_director_repo_port_latest_targets;
+  ecu_metadata_version_secondary = Uptane_double_colon_UptaneSystem_dot_Impl_dot_secondary_ecu_port_ecu_metadata_version_secondary;
+  director_latest_manifest = Uptane_double_colon_UptaneSystem_dot_Impl_dot_director_repo_port_latest_manifest;
+  primary_latest_manifest = Uptane_double_colon_UptaneSystem_dot_Impl_dot_primary_ecu_port_latest_manifest;
+tel
+
