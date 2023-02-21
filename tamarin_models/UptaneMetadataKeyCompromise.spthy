@@ -1,4 +1,4 @@
-theory UptaneMetadata
+theory UptaneMetadataKeyCompromise
 begin
 
 heuristic: o "oracle"
@@ -390,6 +390,17 @@ builtins: hashing, asymmetric-encryption, signing
       '2'
     )
   ]
+
+  rule director_key_compromise:
+  [
+    !DirectorState(< root, timestamp, ~snapshot, targets >, 
+      < ~seckey1, ~seckey2, ~seckey3, ~seckey4, ~seckey5, ~seckey6, ~seckey7, ~seckey8 >,
+      < ~old_root_seckey1, ~old_root_seckey2 >, version)
+  ]
+  --[Unique('director_key_compromise')]->
+  [
+    Out( < ~seckey1, ~seckey2, ~seckey3, ~seckey4, ~seckey5, ~seckey6, ~seckey7, ~seckey8 >)
+  ]
   /*
   // Director send metadata to primary with two signatures (threshold crypto)
   rule director_send_root_metadata:
@@ -456,9 +467,9 @@ builtins: hashing, asymmetric-encryption, signing
           sign(~snapshot, ~snapshot_seckey1), 
           sign(~snapshot, ~snapshot_seckey2) >)
   ]
-*/
 
-  /*
+
+  
   rule director_send_targets_metadata:
   let targets = < h(~primary_image), h(~secondary_image) > in
   [ 
@@ -478,8 +489,8 @@ builtins: hashing, asymmetric-encryption, signing
           sign(targets, ~targets_seckey1), 
           sign(targets, ~targets_seckey2) >)
   ]*/
-
-  /*
+/*
+  
   // Image repo send metadata to primary with two signatures (threshold crypto)
   rule image_send_root_metadata:
   let root = <pk(~root_seckey1), pk(~root_seckey2), 
@@ -569,7 +580,7 @@ builtins: hashing, asymmetric-encryption, signing
           sign(targets, ~targets_seckey2) >)
   ]
 */
-/*
+
   // Primary verify director metadata
   rule primary_verify_meta_dir_root:
   let root = < pk(~root_seckey1), pk(~root_seckey2), 
@@ -612,7 +623,7 @@ builtins: hashing, asymmetric-encryption, signing
   [ 
     In(new_timestamp),
     In( < sig5, sig6 >),
-    PriMetaDir(root, timestamp, snapshot, targets, sigs, 'Verified_meta_dir_root')
+    PriMetaDir(root, timestamp, snapshot, targets, sigs, any_state)
   ]
   --[ 
       Eq(verify(sig5, new_timestamp, pk(~timestamp_seckey1)), true),
@@ -681,7 +692,7 @@ builtins: hashing, asymmetric-encryption, signing
     PriLatestTargetsDir(new_targets, < sig9, sig10 >)
   ]
 
-  
+  /*
   // Primary verify director image
   rule primary_verify_meta_img_root:
   let 
@@ -798,7 +809,7 @@ builtins: hashing, asymmetric-encryption, signing
    [ 
      //PriMetaDir(root, timestamp, snapshot, targets, sigs, 'Not_verifying'),
      PriMetaImg(root_i, timestamp_i, snapshot_i, new_targets_i, sigs_i, 'Not_verifying')
-   ]*/
+   ]
   
   // Primary sends metadata to secondary
   rule primary_send_metadata:
@@ -836,7 +847,7 @@ builtins: hashing, asymmetric-encryption, signing
   [     
     SecMetaDir(< targets_pubkey1, targets_pubkey2 >, new_targets)
   ]
-
+*/
   //////////////////////////
   ////// RESTRICTIONS //////
   //////////////////////////

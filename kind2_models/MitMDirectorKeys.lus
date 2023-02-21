@@ -587,6 +587,12 @@ node imported secondary_ecu_Inst_primary_ecu_port_in_secondary (
   out_primary_instrumented : SecondaryToPrimary_dot_impl
 );
 (*@contract
+
+  (*!! Goal for inlining contract !!
+  var first: SecondaryToPrimary_dot_impl = in_secondary -> pre first;
+  guarantee out_primary_instrumented = in_secondary or out_primary_instrumented = first;
+  *)
+
   guarantee replay_sec_to_pri(in_secondary, out_primary_instrumented);
 *)
 

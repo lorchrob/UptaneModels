@@ -1291,20 +1291,20 @@ public
 				-- Partial bundle installation
 				-- Attack is trivially possible (no availability guarantees)
 
-				guarantee "Freeze":
-				true -> (
-					(ecu_metadata_version_secondary > pre (ecu_metadata_version_secondary)) =>
-						(verified_metadata_secondary.targets_metadata = pre (director_latest_targets))
-				);
+				--guarantee "Freeze":
+				--true -> (
+					--(ecu_metadata_version_secondary > pre (ecu_metadata_version_secondary)) =>
+						--(verified_metadata_secondary.targets_metadata = pre (director_latest_targets))
+				--);
 
-			  guarantee "Mixed-bundles":
-					((ecu_software_version_primary = ecu_software_version_secondary1) and
-					(ecu_software_version_primary = ecu_software_version_secondary2)) =>
-					(
-						Agree_Nodes::Compatible3(installed_image_primary.filename,
-					                           installed_image_secondary.filename,
-																		 installed_image_secondary2.filename)
-					);
+			  --guarantee "Mixed-bundles":
+					--((ecu_software_version_primary = ecu_software_version_secondary1) and
+					--(ecu_software_version_primary = ecu_software_version_secondary2)) =>
+					--(
+						--Agree_Nodes::Compatible3(installed_image_primary.filename,
+					                           --installed_image_secondary.filename,
+																		 --installed_image_secondary2.filename)
+					--);
 
 				guarantee "Mix-and-match":
 					Agree_Nodes::Compatible3(verified_metadata_primary_d.targets_metadata.image_filenames.filename_one,
@@ -1319,14 +1319,14 @@ public
 
 				-- Director verifies bad VVM and is therefore susceptible to choosing a flawed new bundle of images
 				-- Can mess with attacker capabilities to force different attacks
-				guarantee "Faulty VVM":
-					true -> ((director_latest_manifest <> pre (director_latest_manifest)) => (director_latest_manifest = pre (primary_latest_manifest)));
+				--guarantee "Faulty VVM":
+					--true -> ((director_latest_manifest <> pre (director_latest_manifest)) => (director_latest_manifest = pre (primary_latest_manifest)));
 
-				guarantee "Faulty VVM inside vehicle":
-					((counter > 2 and (director_latest_manifest <> pre (director_latest_manifest))) => 
-						(director_latest_manifest.report_two = 
-							pre (pre secondary_latest_report))
-					);
+				--guarantee "Faulty VVM inside vehicle":
+					--((counter > 2 and (director_latest_manifest <> pre (director_latest_manifest))) => 
+						--(director_latest_manifest.report_two = 
+							--pre (pre secondary_latest_report))
+					--);
 
 				-- Image and ECU incompatible based on ECU hardware ID
 				guarantee "Incompatible image":

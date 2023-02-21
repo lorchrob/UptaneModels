@@ -1,4 +1,4 @@
-theory Uptane
+theory UptaneImage
 begin
 
 heuristic: o "oracle"
@@ -202,7 +202,7 @@ builtins: hashing, asymmetric-encryption, signing
     Fr(~new_snapshot), 
     Fr(~new_primary_image), Fr(~new_secondary_image)
   ]
-  -->
+  --[ Unique('image_gen_nonroot_metadata') ]->
   [
     !ImageState(
       <
@@ -232,7 +232,8 @@ builtins: hashing, asymmetric-encryption, signing
     !Pk('ECU', ecu_encryption_key), 
     !ImageState(metadata, keys, old_keys, <~primary_image, ~secondary_image>, version)
   ]
-  --[ ImgSendImages(aenc(~primary_image, ecu_encryption_key), aenc(~secondary_image, ecu_encryption_key)), Unique('image_send_primary_images') ]->
+  --[ ImgSendImages(aenc(~primary_image, ecu_encryption_key), aenc(~secondary_image, ecu_encryption_key)), 
+      Unique('image_send_primary_images') ]->
   [ 
     Out(<'Image', 'Send_Image', aenc(~primary_image, ecu_encryption_key), 
          aenc(~secondary_image, ecu_encryption_key)>)
