@@ -29,6 +29,18 @@ public
 			optional_features_flag: data Base_Types::Boolean;
 	end InitializationBus.impl;
 
+	-- MODEL INPUTS --
+	data ModelInputs
+	end ModelInputs;
+
+	data implementation ModelInputs.impl
+		subcomponents
+			image: data Image.impl;
+			image_secondary: data Image.impl;
+			image_secondary2: data Image.impl;
+			metadata: data Metadata.impl;
+	end ModelInputs.impl;
+
 	-- COMMUNICATION --
 	data PrimaryToImage
 	end PrimaryToImage;
@@ -41,8 +53,6 @@ public
 			image_filename_secondary2: data Base_Types::Integer;
 			image_hash_secondary: data Base_Types::Integer;
 			image_hash_secondary2: data Base_Types::Integer;
-			metadata_request: data MetadataRequest.impl;
-			image_request: data Base_Types::Boolean;
 	end PrimaryToImage.impl;
 	
 	data PrimaryToDirector
@@ -50,9 +60,7 @@ public
 	
 	data implementation PrimaryToDirector.impl
 		subcomponents
-			metadata_request: data MetadataRequest.impl;
 			manifest: data VehicleVersionManifest.impl;
-			manifest_present: data Base_Types::Boolean;
 	end PrimaryToDirector.impl;
 	
 	data ImageToPrimary
@@ -64,9 +72,6 @@ public
 			image_secondary: data Image.impl;
 			image_secondary2: data Image.impl;
 			metadata: data Metadata.impl;
-			image_response: data Base_Types::Boolean;
-			metadata_response: data MetadataRequest.impl;
-			metadata_present: data Base_Types::Boolean;
 	end ImageToPrimary.impl;
 	
 	data DirectorToPrimary
@@ -75,7 +80,6 @@ public
 	data implementation DirectorToPrimary.impl
 		subcomponents
 			metadata: data Metadata.impl;
-			metadata_response: data MetadataRequest.impl;
 	end DirectorToPrimary.impl;
 	
 	data PrimaryToSecondary
@@ -86,10 +90,8 @@ public
 			metadata: data Metadata.impl;
 			metadata_present: data MetadataRequest.impl;
 			image: data Image.impl;
-			image_present: data Base_Types::Boolean;
 			current_time: data Base_Types::Integer;
 			time_present: data Base_Types::Boolean;
-			report_request: data Base_Types::Boolean;
 	end PrimaryToSecondary.impl;
 	
 	data SecondaryToPrimary
@@ -98,7 +100,6 @@ public
 	data implementation SecondaryToPrimary.impl
 		subcomponents
 			ecu_version_report: data EcuVersionReport.impl;
-			report_present: data Base_Types::Boolean;
 	end SecondaryToPrimary.impl;
 	
 	--- METADATA ---
