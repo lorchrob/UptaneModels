@@ -250,7 +250,7 @@ public
 				-- Currently punting on attack detection
 				eq attack_detected: bool = false; 
 				eq previous_nonce: int = (0 -> pre (out_director.manifest.report_one.nonce));
-
+				eq targets_for_secondary: Data_Types::TargetsMetadata.impl = (initialization.metadata_d.targets_metadata -> if (verification_stage_primary = Agree_Constants::VERIFY_SUCCESS) then verified_metadata_primary_d.targets_metadata else pre targets_for_secondary);
 				eq current_targets_director: Data_Types::TargetsMetadata.impl = verified_metadata_primary_d.targets_metadata;										
 				eq previous_targets: Data_Types::TargetsMetadata.impl = initialization.metadata_d.targets_metadata -> if targets_director_verified then pre (verified_metadata_primary_d.targets_metadata)
 				                																																		                else pre (previous_targets);	
@@ -295,8 +295,6 @@ public
 					(false -> (current_targets_director.image_hashes.hash_three	= (Agree_Nodes::HashImg(in_image.image_secondary2)))); 
 
 				eq root_director_verified: bool = false -> (
-					-- We are in the correct step of verification
-					(pre (verification_stage_primary) = Agree_Constants::VERIFY_SUCCESS) and
 					-- The payload is properly signed
 					(verified_metadata_primary_d.root_metadata.root_threshold_signatures <= 2) and
 					(Agree_Nodes::Match(in_director.metadata.root_metadata.common_payload.signatures.signature_one, 
@@ -315,8 +313,7 @@ public
 				);
 
 				eq timestamp_director_verified: bool = false -> (
-					-- We are in the correct verification stage
-					((pre (verification_stage_primary) = Agree_Constants::ROOT_D)) and
+					root_director_verified and
 					-- We have the correct number of valid signatures
 					(verified_metadata_primary_d.root_metadata.timestamp_threshold_signatures <= 2) and
 					(Agree_Nodes::Match(in_director.metadata.timestamp_metadata.common_payload.signatures.signature_one, 
@@ -330,8 +327,7 @@ public
 				);
 
 				eq snapshot_director_verified: bool = false -> (
-					-- We are in the correct verification stage
-					(pre (verification_stage_primary) = Agree_Constants::TIMESTAMP_D) and
+					root_director_verified and timestamp_director_verified and
 					-- We have the correct number of valid signatures
 					verified_metadata_primary_d.root_metadata.snapshot_threshold_signatures <= 2 and
 					Agree_Nodes::Match(in_director.metadata.snapshot_metadata.common_payload.signatures.signature_one, 
@@ -356,10 +352,9 @@ public
 				);
 
 				eq targets_director_verified: bool = false -> (
+					root_director_verified and timestamp_director_verified and snapshot_director_verified and
 					-- Version number matches snapshot metadata
 					in_director.metadata.targets_metadata.common_payload.version = verified_metadata_primary_d.snapshot_metadata.targets_version_numbers.version_number_one and
-					-- We are in the correct verification stage
-					((pre (verification_stage_primary) = Agree_Constants::SNAPSHOT_D)) and
 					-- We have the correct number of valid signatures
 					verified_metadata_primary_d.root_metadata.targets_threshold_signatures <= 2 and
           Agree_Nodes::Match(in_director.metadata.targets_metadata.common_payload.signatures.signature_one, 
@@ -379,8 +374,7 @@ public
 				);
 
 				eq root_image_verified: bool = false -> (
-					-- We are in the correct stage of verification
-					((pre (verification_stage_primary) = Agree_Constants::TARGETS_D)) and
+					root_director_verified and timestamp_director_verified and snapshot_director_verified and targets_director_verified and
 					-- We have the correct number of valid signatures
 					verified_metadata_primary_i.root_metadata.root_threshold_signatures <= 2 and
 					Agree_Nodes::Match(in_image.metadata.root_metadata.common_payload.signatures.signature_one, 
@@ -397,10 +391,10 @@ public
 					Agree_Nodes::Match(in_image.metadata.root_metadata.common_payload.signatures.signature_two, 
 														 in_image.metadata.root_metadata.root_public_keys.key_two)
 				);
-		  	
+
 				eq timestamp_image_verified: bool = false -> (
-					-- We are in the correct stage of verification
-					((pre (verification_stage_primary) = Agree_Constants::ROOT_I)) and
+					root_director_verified and timestamp_director_verified and snapshot_director_verified and targets_director_verified and 
+					root_image_verified and
 					-- We have the correct number of valid signatures
 					verified_metadata_primary_i.root_metadata.timestamp_threshold_signatures <= 2 and
 					Agree_Nodes::Match(in_image.metadata.timestamp_metadata.common_payload.signatures.signature_one, 
@@ -414,8 +408,8 @@ public
 				);
 				
 				eq snapshot_image_verified: bool = false -> (
-					-- We are in the correct verification stage
-					((pre (verification_stage_primary) = Agree_Constants::TIMESTAMP_I)) and
+					root_director_verified and timestamp_director_verified and snapshot_director_verified and targets_director_verified and 
+					root_image_verified and timestamp_image_verified and
 					-- We have the correct number of valid signatures
 					verified_metadata_primary_i.root_metadata.snapshot_threshold_signatures <= 2 and
 					Agree_Nodes::Match(in_image.metadata.snapshot_metadata.common_payload.signatures.signature_one, 
@@ -440,8 +434,8 @@ public
 				);
 
 				eq targets_image_verified: bool = false -> (
-					-- We are in the correct stage of verification
-					((pre (verification_stage_primary) = Agree_Constants::SNAPSHOT_I)) and
+					root_director_verified and timestamp_director_verified and snapshot_director_verified and targets_director_verified and 
+					root_image_verified and timestamp_image_verified and snapshot_image_verified and
 					-- Version number matches snapshot metadata
 					in_image.metadata.targets_metadata.common_payload.version = verified_metadata_primary_i.snapshot_metadata.targets_version_numbers.version_number_one and
 					-- We have the correct number of valid signatures
@@ -465,8 +459,8 @@ public
 				);
 
 				eq targets_match_verified: bool = false -> (
-					-- We are in the correct stage of verification
-					((pre (verification_stage_primary) = Agree_Constants::TARGETS_I)) and
+					root_director_verified and timestamp_director_verified and snapshot_director_verified and targets_director_verified and 
+					root_image_verified and timestamp_image_verified and snapshot_image_verified and targets_image_verified and
 					-- The targets metadata from the image repo matches the targets metadata from the director
 					in_image.metadata.targets_metadata.image_filenames = latest_targets_director.image_filenames and
 					in_image.metadata.targets_metadata.image_hashes = latest_targets_director.image_hashes and
@@ -499,8 +493,8 @@ public
 
 				-- SHALL
 				guarantee "The primary sends the correct metadata and images to the secondary":
-					(out_secondary.metadata = verified_metadata_primary_d) and
-					(out_secondary2.metadata = verified_metadata_primary_d);
+					(out_secondary.metadata.targets_metadata = targets_for_secondary) and
+					(out_secondary2.metadata.targets_metadata = targets_for_secondary);
 					-- The image sent to the secondary is set in the "IMAGE VERIFICATION" section
 
 				-- Should maybe be included, but it's not in the standard. It's commented out so that the primary
@@ -573,18 +567,18 @@ public
 				-- SHALL
 				guarantee "The ECU verifies images according to the standard":
 					if new_image_verified 
-        	then ((installed_image_primary = (initial_image -> pre (in_image.image))))
+        	then ((installed_image_primary = (initial_image -> (in_image.image))))
 					else installed_image_primary = (initial_image -> pre (installed_image_primary));
 
 				-- SHALL
 				guarantee "The ECU verifies images for its secondaries":
 					if new_image_verified_secondary 
-        	then (((out_secondary.image = ((in_image.image_secondary)))))
+        	then (((out_secondary.image = (initialization.secondary_image -> (in_image.image_secondary)))))
 					else ((out_secondary.image = (initialization.secondary_image -> pre (out_secondary.image))));
 
 				guarantee "The ECU verifies images for its secondaries (2)":
 					if new_image_verified_secondary2
-        	then (((out_secondary2.image = ((in_image.image_secondary2)))))
+        	then (((out_secondary2.image = (initialization.secondary_image2 -> (in_image.image_secondary2)))))
 					else ((out_secondary2.image = (initialization.secondary_image2 -> pre (out_secondary2.image))));
 
 				-- MODEL
@@ -602,41 +596,35 @@ public
 					((latest_targets_director = initialization.metadata_d.targets_metadata) -> true);
 
 				-- SHALL
-				guarantee "The Primary is initialized at the beginning of the verification steps":
-					(verification_stage_primary = Agree_Constants::VERIFY_SUCCESS) -> true;
+				--guarantee "The Primary is initialized at the beginning of the verification steps":
+					--(verification_stage_primary = Agree_Constants::VERIFY_SUCCESS) -> true;
 
 				-- MODEL
-				guarantee "There is no recovery from failed metadata verification":
-					true -> (pre (verification_stage_primary = Agree_Constants::VERIFY_FAIL) => verification_stage_primary = Agree_Constants::VERIFY_FAIL)
+				--guarantee "There is no recovery from failed metadata verification":
+					--true -> (pre (verification_stage_primary = Agree_Constants::VERIFY_FAIL) => verification_stage_primary = Agree_Constants::VERIFY_FAIL)
 
 				-- SHALL(?)
 				guarantee "Full verification: Root metadata from Director repo":
 					(
 						if root_director_verified
-						then (verified_metadata_primary_d.root_metadata = (initialization.metadata_d.root_metadata -> in_director.metadata.root_metadata) and
-								 verification_stage_primary = Agree_Constants::ROOT_D)
-						else ((verified_metadata_primary_d.root_metadata = (initialization.metadata_d.root_metadata -> pre (verified_metadata_primary_d.root_metadata))) and 
-								 verification_stage_primary <> Agree_Constants::ROOT_D)
+						then (verified_metadata_primary_d.root_metadata = (initialization.metadata_d.root_metadata -> in_director.metadata.root_metadata))
+						else ((verified_metadata_primary_d.root_metadata = (initialization.metadata_d.root_metadata -> pre (verified_metadata_primary_d.root_metadata))))
 					);
 
 				-- SHALL(?)
 				guarantee "Full verification: Timestamp metadata from Director repo":
 					(
 						if timestamp_director_verified
-						then (verified_metadata_primary_d.timestamp_metadata = (initialization.metadata_d.timestamp_metadata -> in_director.metadata.timestamp_metadata) and
-								 verification_stage_primary = Agree_Constants::TIMESTAMP_D)
-						else ((verified_metadata_primary_d.timestamp_metadata = (initialization.metadata_d.timestamp_metadata -> pre (verified_metadata_primary_d.timestamp_metadata))) and 
-								 verification_stage_primary <> Agree_Constants::TIMESTAMP_D)
+						then (verified_metadata_primary_d.timestamp_metadata = (initialization.metadata_d.timestamp_metadata -> in_director.metadata.timestamp_metadata))
+						else ((verified_metadata_primary_d.timestamp_metadata = (initialization.metadata_d.timestamp_metadata -> pre (verified_metadata_primary_d.timestamp_metadata))))
 					);
 
 				-- SHALL(?)
 				guarantee "Full verification: Snapshot metadata from Director repo":
 					(
 						if snapshot_director_verified
-						then (verified_metadata_primary_d.snapshot_metadata = (initialization.metadata_d.snapshot_metadata -> in_director.metadata.snapshot_metadata) and
-								 verification_stage_primary = Agree_Constants::SNAPSHOT_D)
-						else ((verified_metadata_primary_d.snapshot_metadata = (initialization.metadata_d.snapshot_metadata -> pre (verified_metadata_primary_d.snapshot_metadata))) and
-								 verification_stage_primary <> Agree_Constants::SNAPSHOT_D)
+						then (verified_metadata_primary_d.snapshot_metadata = (initialization.metadata_d.snapshot_metadata -> in_director.metadata.snapshot_metadata))
+						else ((verified_metadata_primary_d.snapshot_metadata = (initialization.metadata_d.snapshot_metadata -> pre (verified_metadata_primary_d.snapshot_metadata))))
 					);
 
 				-- SHALL(?)
@@ -644,63 +632,49 @@ public
 					(
 						if targets_director_verified
 						then (verified_metadata_primary_d.targets_metadata = (initialization.metadata_d.targets_metadata -> in_director.metadata.targets_metadata) and
-								 latest_targets_director = (in_director.metadata.targets_metadata) and
-								 verification_stage_primary = Agree_Constants::TARGETS_D)
+								 latest_targets_director = (in_director.metadata.targets_metadata))
 						else ((verified_metadata_primary_d.targets_metadata = (initialization.metadata_d.targets_metadata -> pre (verified_metadata_primary_d.targets_metadata))) and 
-								 latest_targets_director = (initialization.metadata_d.targets_metadata -> pre (latest_targets_director)) and
-								 verification_stage_primary <> Agree_Constants::TARGETS_D)
+								 latest_targets_director = (initialization.metadata_d.targets_metadata -> pre (latest_targets_director)))
 					);
 
 				-- SHALL(?)
 				guarantee "Full verification: Root metadata from Image repo":
 					(
 						if root_image_verified
-						then (verified_metadata_primary_i.root_metadata = (initialization.metadata_i.root_metadata -> in_image.metadata.root_metadata) and
-								 verification_stage_primary = Agree_Constants::ROOT_I)
-						else ((verified_metadata_primary_i.root_metadata = (initialization.metadata_i.root_metadata -> pre (verified_metadata_primary_i.root_metadata))) and 
-								 verification_stage_primary <> Agree_Constants::ROOT_I)
+						then (verified_metadata_primary_i.root_metadata = (initialization.metadata_i.root_metadata -> in_image.metadata.root_metadata))
+						else ((verified_metadata_primary_i.root_metadata = (initialization.metadata_i.root_metadata -> pre (verified_metadata_primary_i.root_metadata))))
 					);
 
 				-- SHALL(?)
 				guarantee "Full verification: Timestamp metadata from Image repo":
 					(
 						if timestamp_image_verified
-						then (verified_metadata_primary_i.timestamp_metadata = (initialization.metadata_i.timestamp_metadata -> in_image.metadata.timestamp_metadata) and
-								 verification_stage_primary = Agree_Constants::TIMESTAMP_I)
-						else ((verified_metadata_primary_i.timestamp_metadata = (initialization.metadata_i.timestamp_metadata -> pre (verified_metadata_primary_i.timestamp_metadata))) and 
-								 verification_stage_primary <> Agree_Constants::TIMESTAMP_I)
+						then (verified_metadata_primary_i.timestamp_metadata = (initialization.metadata_i.timestamp_metadata -> in_image.metadata.timestamp_metadata))
+						else ((verified_metadata_primary_i.timestamp_metadata = (initialization.metadata_i.timestamp_metadata -> pre (verified_metadata_primary_i.timestamp_metadata))))
 					);
 
 				-- SHALL(?)
 				guarantee "Full verification: Snapshot metadata from Image repo":
 					(
 						if snapshot_image_verified
-						then (verified_metadata_primary_i.snapshot_metadata = (initialization.metadata_i.snapshot_metadata -> in_image.metadata.snapshot_metadata) and
-								 verification_stage_primary = Agree_Constants::SNAPSHOT_I)
-						else ((verified_metadata_primary_i.snapshot_metadata = (initialization.metadata_i.snapshot_metadata -> pre (verified_metadata_primary_i.snapshot_metadata))) and 
-								 verification_stage_primary <> Agree_Constants::SNAPSHOT_I)
+						then (verified_metadata_primary_i.snapshot_metadata = (initialization.metadata_i.snapshot_metadata -> in_image.metadata.snapshot_metadata))
+						else ((verified_metadata_primary_i.snapshot_metadata = (initialization.metadata_i.snapshot_metadata -> pre (verified_metadata_primary_i.snapshot_metadata))))
 					);
 
 				-- SHALL(?)
 				guarantee "Full verification: Targets metadata from Image repo":
 					(
 						if targets_image_verified
-						then (verified_metadata_primary_i.targets_metadata = (initialization.metadata_i.targets_metadata -> in_image.metadata.targets_metadata) and
-								 verification_stage_primary = Agree_Constants::TARGETS_I)
-						else ((verified_metadata_primary_i.targets_metadata = (initialization.metadata_i.targets_metadata -> pre (verified_metadata_primary_i.targets_metadata))) and 
-								 verification_stage_primary <> Agree_Constants::TARGETS_I)
+						then (verified_metadata_primary_i.targets_metadata = (initialization.metadata_i.targets_metadata -> in_image.metadata.targets_metadata))
+						else ((verified_metadata_primary_i.targets_metadata = (initialization.metadata_i.targets_metadata -> pre (verified_metadata_primary_i.targets_metadata))))
 					);
 
 				-- SHALL(?)
 				guarantee "Full verification: Targets match between Director and Image repos":
 					(
 						if targets_match_verified
-						then ((verification_stage_primary = Agree_Constants::VERIFY_SUCCESS) and
-						       out_secondary.metadata_present.targets_metadata and
-									 out_secondary2.metadata_present.targets_metadata)
-						else 
-						(((pre (verification_stage_primary) <> Agree_Constants::VERIFY_SUCCESS) => verification_stage_primary <> Agree_Constants::VERIFY_SUCCESS) and
-						   not out_secondary.metadata_present.targets_metadata and not out_secondary2.metadata_present.targets_metadata);
+						then (verification_stage_primary = Agree_Constants::VERIFY_SUCCESS)
+						else (verification_stage_primary = Agree_Constants::VERIFY_FAIL);
 					);
 
 				-- MODEL
@@ -852,7 +826,7 @@ public
 						ecu_metadata_version_secondary = (1 -> pre (ecu_metadata_version_secondary) + 1))
 					else 
 						(verified_metadata_secondary.targets_metadata = (initial_targets -> pre (verified_metadata_secondary.targets_metadata)) and
-						ecu_metadata_version_secondary = (1 -> (pre (ecu_metadata_version_secondary))));
+						ecu_metadata_version_secondary = (0 -> (pre (ecu_metadata_version_secondary))));
 
 				guarantee "Metadata frame conditions":
 					true -> (
@@ -1095,6 +1069,12 @@ public
 					model_inputs.metadata.targets_metadata.hardware_ids.hardware_id_three = hardware_id_secondary2;
 
 				-- IMPLICIT ASSUMPTION
+				assume "Targets metadata image release counters are non-decreasing.":
+					model_inputs.metadata.targets_metadata.release_counters.release_counter_one >= pre (model_inputs.metadata.targets_metadata.release_counters.release_counter_one) and
+					model_inputs.metadata.targets_metadata.release_counters.release_counter_two >= pre (model_inputs.metadata.targets_metadata.release_counters.release_counter_two) and
+					model_inputs.metadata.targets_metadata.release_counters.release_counter_three >= pre (model_inputs.metadata.targets_metadata.release_counters.release_counter_three);
+
+				-- IMPLICIT ASSUMPTION
 				-- Otherwise, (eg) images can fail verification without attack, causing mixed bundle/incompatibility
 				-- issues even in the benign case. For example, one ECU might successfully update while the other
 				-- fails verification, leaving ECUs with incompatible images.
@@ -1188,9 +1168,9 @@ public
 				-- Attack is trivially possible (no availability guarantees)
 
 				guarantee "Freeze":
-				(counter >= 5) => (
+				true => (
 					(ecu_metadata_version_secondary > pre (ecu_metadata_version_secondary)) =>
-						(verified_metadata_secondary.targets_metadata = pre (pre (pre (pre (pre (director_latest_targets))))))
+						(verified_metadata_secondary.targets_metadata = director_latest_targets)
 				);
 
 			  guarantee "Mixed-bundles":

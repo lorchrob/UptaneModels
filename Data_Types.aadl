@@ -243,9 +243,7 @@ public
 	data VerificationStage
 		properties
 			Data_Model::Data_Representation => Enum;
-	  	Data_Model::Enumerators => ("ROOT_DIRECTOR", "TIMESTAMP_DIRECTOR", "SNAPSHOT_DIRECTOR", "TARGETS_DIRECTOR",
-			                            "ROOT_IMAGE", "TIMESTAMP_IMAGE", "SNAPSHOT_IMAGE", "TARGETS_IMAGE", 
-																	"VERIFICATION_SUCCESS", "VERIFICATION_FAILURE");
+	  	Data_Model::Enumerators => ("VERIFICATION_SUCCESS", "VERIFICATION_FAILURE");
 	end VerificationStage;
 
 	-- LISTS --
