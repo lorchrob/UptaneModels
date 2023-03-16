@@ -72,29 +72,42 @@ public
 
 				eq current_manifest: Data_Types::VehicleVersionManifest.impl = initialization.manifest -> (if valid_manifest then (in_primary.manifest) else pre (current_manifest));
 
-				guarantee "Test guarantee to make partial bundle pass in benign case":
+				guarantee "Test guarantee to make partial bundle pass in benign case (no targets key rotation)":
 					true -> (out_primary.metadata.root_metadata.targets_public_keys = pre (out_primary.metadata.root_metadata.targets_public_keys)) and
 					true -> (out_primary.metadata.root_metadata.targets_threshold_signatures = pre (out_primary.metadata.root_metadata.targets_threshold_signatures));
-
 				
 
 				-- IMPLICIT ASSUMPTION
-				guarantee "Well-formedness guarantees (director chooses input images to include in targets metadata)":
+				guarantee "Metadata well-formedness guarantees (director chooses input images to include in targets metadata)":
 					(
 						out_primary.metadata.targets_metadata.hardware_ids.hardware_id_one = hardware_id_one and
 						out_primary.metadata.targets_metadata.hardware_ids.hardware_id_two = hardware_id_two and
 						out_primary.metadata.targets_metadata.hardware_ids.hardware_id_three = hardware_id_three and
-						((out_primary.metadata.targets_metadata.release_counters.release_counter_one = (model_inputs.image.version))) and
-						((out_primary.metadata.targets_metadata.release_counters.release_counter_two = (model_inputs.image_secondary.version))) and
-						((out_primary.metadata.targets_metadata.release_counters.release_counter_three = (model_inputs.image_secondary2.version))) and
-						out_primary.metadata.targets_metadata.image_filenames.filename_one = model_inputs.image.filename and
-						out_primary.metadata.targets_metadata.image_filenames.filename_two = model_inputs.image_secondary.filename and
-						out_primary.metadata.targets_metadata.image_filenames.filename_three = model_inputs.image_secondary2.filename and
-						out_primary.metadata.targets_metadata.image_hashes.hash_one = Agree_Nodes::HashImg(model_inputs.image) and
-						out_primary.metadata.targets_metadata.image_hashes.hash_two = Agree_Nodes::HashImg(model_inputs.image_secondary) and
-						out_primary.metadata.targets_metadata.image_hashes.hash_three = Agree_Nodes::HashImg(model_inputs.image_secondary2)
+						Agree_Nodes::TargetsPriMatchImg(out_primary.metadata.targets_metadata, model_inputs.image1, model_inputs.image2, model_inputs.image3, model_inputs.image4, model_inputs.image5) and
+						Agree_Nodes::TargetsSecMatchImg(out_primary.metadata.targets_metadata, model_inputs.image1, model_inputs.image2, model_inputs.image3, model_inputs.image4, model_inputs.image5) and
+					  Agree_Nodes::TargetsSec2MatchImg(out_primary.metadata.targets_metadata, model_inputs.image1, model_inputs.image2, model_inputs.image3, model_inputs.image4, model_inputs.image5) 
 					) or
-					(false -> (out_primary.metadata.targets_metadata = pre (out_primary.metadata.targets_metadata)));
+					(false -> (out_primary.metadata.targets_metadata = pre (out_primary.metadata.targets_metadata))); 
+
+				-- IMPLICIT ASSUMPTION
+				guarantee "The director generated metadata using images with nondecreasing release counters":
+						(true -> out_primary.metadata.targets_metadata.release_counters.release_counter_one >= pre (out_primary.metadata.targets_metadata.release_counters.release_counter_one)) and
+						(true -> out_primary.metadata.targets_metadata.release_counters.release_counter_two >= pre (out_primary.metadata.targets_metadata.release_counters.release_counter_two)) and
+						(true -> out_primary.metadata.targets_metadata.release_counters.release_counter_three >= pre (out_primary.metadata.targets_metadata.release_counters.release_counter_three));
+
+				-- SHALL
+				guarantee "The set of chosen images does not have conflicts":
+					Agree_Nodes::Compatible3(out_primary.metadata.targets_metadata.image_filenames.filename_one, 
+																	 out_primary.metadata.targets_metadata.image_filenames.filename_two,
+																	 out_primary.metadata.targets_metadata.image_filenames.filename_three);
+					
+				-- SHOULD
+				guarantee "Each chosen image is compatible with its corresponding ECU": 
+					initialization.optional_features_flag => (
+						Agree_Nodes::Compatible(out_primary.metadata.targets_metadata.image_filenames.filename_one, hardware_id_one) and
+						Agree_Nodes::Compatible(out_primary.metadata.targets_metadata.image_filenames.filename_two, hardware_id_two) and
+						Agree_Nodes::Compatible(out_primary.metadata.targets_metadata.image_filenames.filename_three, hardware_id_three)
+					);
 
 				-- SHOULD
 				guarantee "The Director repo checks the vehicle version manifest for validity before generating new metadata":
@@ -123,12 +136,6 @@ public
 					(out_primary.metadata = initialization.metadata_d) -> true;
 
 				-- MODEL
-				guarantee "Director only tells ECUs to download images authored by OEMs":
-					Agree_Nodes::AuthoredByOem(out_primary.metadata.targets_metadata.image_hashes.hash_one) and
-					Agree_Nodes::AuthoredByOem(out_primary.metadata.targets_metadata.image_hashes.hash_two) and
-					Agree_Nodes::AuthoredByOem(out_primary.metadata.targets_metadata.image_hashes.hash_three);
-
-				-- MODEL
 				guarantee "Set the probe":
 					latest_targets = 
 					(initialization.metadata_d.targets_metadata -> out_primary.metadata.targets_metadata);
@@ -139,6 +146,7 @@ public
 					(initialization.manifest -> (if valid_manifest then in_primary.manifest else pre latest_manifest));
 				-- Might want new images/metadata to be dependent on information from the manifest.
 				-- But, this is not actually part of the standard.
+			
 			**};
 	end DirectorRepo;
 
@@ -153,21 +161,18 @@ public
 			model_inputs: in data port Data_Types::ModelInputs.impl;
 			initialization: in data port Data_Types::InitializationBus.impl;
 			in_primary: in data port Data_Types::PrimaryToImage.impl;
-			--in_images: in data port Data_Types::ImageSet.impl;
 			
 			-- Outputs
 			out_primary: out data port Data_Types::ImageToPrimary.impl;
 
 			-- Assumes and Guarantees
 			annex agree {**
-				--eq image_set: Data_Types::ImageSet.impl = in_images -> pre (image_set);
 				eq hardware_id_one: int = initialization.hardware_id_one -> pre (hardware_id_one);
 				eq hardware_id_two: int = initialization.hardware_id_two -> pre (hardware_id_two);
 				eq hardware_id_three: int = initialization.hardware_id_three -> pre (hardware_id_three);
 
 				--guarantee "Test guarantee to make partial bundle pass in benign case":
 					--true -> (out_primary.metadata.root_metadata.targets_public_keys = pre (out_primary.metadata.root_metadata.targets_public_keys));
-
 				-- INITIALIZATION (MODEL)
 				guarantee "Initialize the Image repo":
 					(
@@ -177,20 +182,19 @@ public
 						(out_primary.image_secondary2 = initialization.secondary_image2)
 					) -> true;
 
-				-- SHALL
-				--guarantee "The Image Repo sends the correct images based on the Primary's request":
-				--true -> (
-					--(out_primary.image.filename = ((in_primary.image_filename))) and
-					--(Agree_Nodes::HashImg(out_primary.image) = ((in_primary.image_hash))) and
-					--(out_primary.image_secondary.filename = (in_primary.image_filename_secondary)) and
-					--(Agree_Nodes::HashImg(out_primary.image_secondary) = (in_primary.image_hash_secondary)) and
-					--(out_primary.image_secondary2.filename = (in_primary.image_filename_secondary2)) and
-					--(Agree_Nodes::HashImg(out_primary.image_secondary2) = (in_primary.image_hash_secondary2))
-				--);
+				guarantee "The image repo serves the metadata from input":
+					(out_primary.metadata = model_inputs.metadata);
+					
+				guarantee "The image repo responds to the primary's request for images":
+					out_primary.image_present => (out_primary.image.filename = in_primary.image_filename) and
+					out_primary.image_secondary_present => (out_primary.image_secondary.filename = in_primary.image_filename_secondary) and
+					out_primary.image_secondary2_present => (out_primary.image_secondary2.filename = in_primary.image_filename_secondary2);
 
-				guarantee "test":
-					(out_primary.metadata = model_inputs.metadata) and (out_primary.image = model_inputs.image) 
-					and (out_primary.image_secondary = model_inputs.image_secondary) and (out_primary.image_secondary2 = model_inputs.image_secondary2);
+				guarantee "The image repo sends images that are members of its input":
+					(out_primary.image = model_inputs.image1 or out_primary.image = model_inputs.image2 or out_primary.image = model_inputs.image3 or out_primary.image = model_inputs.image4 or out_primary.image = model_inputs.image5) and
+					(out_primary.image_secondary = model_inputs.image1 or out_primary.image_secondary = model_inputs.image2 or out_primary.image_secondary = model_inputs.image3 or out_primary.image_secondary = model_inputs.image4 or out_primary.image_secondary = model_inputs.image5) and
+					(out_primary.image_secondary2 = model_inputs.image1 or out_primary.image_secondary2 = model_inputs.image2 or out_primary.image_secondary2 = model_inputs.image3 or out_primary.image_secondary2 = model_inputs.image4 or out_primary.image_secondary2 = model_inputs.image5);
+					
 			**};
 	end ImageRepo;
 
@@ -253,9 +257,10 @@ public
 				eq targets_for_secondary: Data_Types::TargetsMetadata.impl = (initialization.metadata_d.targets_metadata -> if (verification_stage_primary = Agree_Constants::VERIFY_SUCCESS) then verified_metadata_primary_d.targets_metadata else pre targets_for_secondary);
 				eq current_targets_director: Data_Types::TargetsMetadata.impl = verified_metadata_primary_d.targets_metadata;										
 				eq previous_targets: Data_Types::TargetsMetadata.impl = initialization.metadata_d.targets_metadata -> if targets_director_verified then pre (verified_metadata_primary_d.targets_metadata)
-				                																																		                else pre (previous_targets);	
-
+				                																														                          else pre (previous_targets);	
 				eq new_image_verified: bool = 
+					-- We have recieved an image from the image repo
+					in_image.image_present and
 					-- We are not in the middle of verifying metadata
 					(verification_stage_primary = Agree_Constants::VERIFY_SUCCESS) and
 					-- The image's hardware ID matches this ECU's hardware ID (based on targets metadata)
@@ -269,6 +274,8 @@ public
 					(false -> (current_targets_director.image_hashes.hash_one	= (Agree_Nodes::HashImg(in_image.image)))); 
 
 				eq new_image_verified_secondary: bool = 
+				-- We have recieved an image from the image repo
+					in_image.image_secondary_present and
 					-- We are not in the middle of verifying metadata
 					(verification_stage_primary = Agree_Constants::VERIFY_SUCCESS) and
 					-- The image's hardware ID matches this ECU's hardware ID (based on targets metadata)
@@ -282,6 +289,8 @@ public
 					(false -> (current_targets_director.image_hashes.hash_two	= (Agree_Nodes::HashImg(in_image.image_secondary)))); 
 
 				eq new_image_verified_secondary2: bool = 
+				-- We have recieved an image from the image repo
+					in_image.image_secondary2_present and
 					-- We are not in the middle of verifying metadata
 					(verification_stage_primary = Agree_Constants::VERIFY_SUCCESS) and
 					-- The image's hardware ID matches this ECU's hardware ID (based on targets metadata)
@@ -437,51 +446,37 @@ public
 					root_director_verified and timestamp_director_verified and snapshot_director_verified and targets_director_verified and 
 					root_image_verified and timestamp_image_verified and snapshot_image_verified and
 					-- Version number matches snapshot metadata
-					in_image.metadata.targets_metadata.common_payload.version = verified_metadata_primary_i.snapshot_metadata.targets_version_numbers.version_number_one and
+					in_image.metadata.targets_metadata_i.common_payload.version = verified_metadata_primary_i.snapshot_metadata.targets_version_numbers.version_number_one and
 					-- We have the correct number of valid signatures
 					verified_metadata_primary_i.root_metadata.targets_threshold_signatures <= 2 and
-          Agree_Nodes::Match(in_image.metadata.targets_metadata.common_payload.signatures.signature_one, 
+          Agree_Nodes::Match(in_image.metadata.targets_metadata_i.common_payload.signatures.signature_one, 
 														 verified_metadata_primary_i.root_metadata.targets_public_keys.key_one) and
-					Agree_Nodes::Match(in_image.metadata.targets_metadata.common_payload.signatures.signature_two, 
+					Agree_Nodes::Match(in_image.metadata.targets_metadata_i.common_payload.signatures.signature_two, 
 														 verified_metadata_primary_i.root_metadata.targets_public_keys.key_two) and
 					-- The version number is non-decreasing
-					(in_image.metadata.targets_metadata.common_payload.version >= pre (verified_metadata_primary_i.targets_metadata.common_payload.version)) and
+					(in_image.metadata.targets_metadata_i.common_payload.version >= pre (verified_metadata_primary_i.targets_metadata_i.common_payload.version)) and
 					-- EXTRA ASSUMPTION NEEDED: the expiration time must be far enough in the future such that
 					-- the secondary can also verify the metadata. If not, we can get partial bundle issues with no attacker. (verify this)
 					-- The metadata is not expired
-					in_image.metadata.targets_metadata.common_payload.expiration > (current_time + 1) and
-				  -- The new Targets metadata does not list the same ECU ID multiple times
-					(
-						in_image.metadata.targets_metadata.ecu_ids.ecu_id_one <> in_image.metadata.targets_metadata.ecu_ids.ecu_id_two and
-						in_image.metadata.targets_metadata.ecu_ids.ecu_id_one <> in_image.metadata.targets_metadata.ecu_ids.ecu_id_three and
-						in_image.metadata.targets_metadata.ecu_ids.ecu_id_two <> in_image.metadata.targets_metadata.ecu_ids.ecu_id_three
-					)
+					in_image.metadata.targets_metadata_i.common_payload.expiration > (current_time + 1)
 				);
 
+				-- TODO: UPDATE
 				eq targets_match_verified: bool = false -> (
 					root_director_verified and timestamp_director_verified and snapshot_director_verified and targets_director_verified and 
 					root_image_verified and timestamp_image_verified and snapshot_image_verified and targets_image_verified and
 					-- The targets metadata from the image repo matches the targets metadata from the director
-					in_image.metadata.targets_metadata.image_filenames = latest_targets_director.image_filenames and
-					in_image.metadata.targets_metadata.image_hashes = latest_targets_director.image_hashes and
-					in_image.metadata.targets_metadata.image_file_sizes = latest_targets_director.image_file_sizes and
-
-					-- SHOULD
-					(initialization.optional_features_flag => 
-					(in_image.metadata.targets_metadata.release_counters = latest_targets_director.release_counters)) and
-
-					in_image.metadata.targets_metadata.ecu_ids = latest_targets_director.ecu_ids and
-					in_image.metadata.targets_metadata.hardware_ids = latest_targets_director.hardware_ids and
-
+					Agree_Nodes::TargetsMatch(latest_targets_director, in_image.metadata.targets_metadata_i, initialization.optional_features_flag) and
 					-- SHOULD
 					-- The release counter is non-decreasing
 					(initialization.optional_features_flag => 
-					(in_image.metadata.targets_metadata.release_counters.release_counter_one <= previous_targets.release_counters.release_counter_one and
-					 in_image.metadata.targets_metadata.release_counters.release_counter_two <= previous_targets.release_counters.release_counter_two and
-					 in_image.metadata.targets_metadata.release_counters.release_counter_three <= previous_targets.release_counters.release_counter_three))
+					(latest_targets_director.release_counters.release_counter_one >= previous_targets.release_counters.release_counter_one and
+					 latest_targets_director.release_counters.release_counter_two >= previous_targets.release_counters.release_counter_two and
+					 latest_targets_director.release_counters.release_counter_three >= previous_targets.release_counters.release_counter_three))
 				);
+				
 
-
+	
 				-------------------------------------
 				--- COMMUNICATION WITH SECONDARY  ---
 				-------------------------------------
@@ -505,28 +500,31 @@ public
 				--------------------------------------------------------
 				--- ECU VERSION REPORTS AND VEHICLE VERSION MANIFEST ---
 				--------------------------------------------------------
-				-- SHALL
+							-- SHALL
 				guarantee "The manifest sends the correct ECU version report for the secondary in the vehicle version manifest":
-					((out_director.manifest.report_two = most_recent_secondary_report) and
-					 (out_director.manifest.report_three = most_recent_secondary_report2));
+					true -> (((out_director.manifest.report_two = most_recent_secondary_report) and
+					 					(out_director.manifest.report_three = most_recent_secondary_report2)));
 
 				-- SHALL
 				guarantee "The vehicle version manifest signature matches the payload":
+					true -> (
 					Agree_Nodes::Match(out_director.manifest.signature,
-														 ecu_key);
+														 ecu_key));
 
 				-- SHALL
 				guarantee "The ECU version report signature matches the payload":
+					true -> (
 					Agree_Nodes::Match(out_director.manifest.report_one.signature, 
-														 ecu_key);
+														 ecu_key));
 
 				-- SHALL
 				guarantee "The ECU version report's ECU ID matches this ECU's ID":
-					(out_director.manifest.report_one.ecu_id = ecu_id);
+					true -> (
+					(out_director.manifest.report_one.ecu_id = ecu_id));
 
 				-- SHALL
 				guarantee "The ECU's currently installed image metadata matches the version report's information (filename, length, and hashes)":
-					(
+					true -> (
 						installed_image_primary.filename = out_director.manifest.report_one.image_filename and
 					  Agree_Nodes::HashImg(installed_image_primary) = out_director.manifest.report_one.image_hash and
 						installed_image_primary.length = out_director.manifest.report_one.image_length
@@ -534,11 +532,15 @@ public
 
 				-- SHALL
 				guarantee "The ECU version report lists the current time":
-					out_director.manifest.report_one.latest_time = current_time;
+					true -> (out_director.manifest.report_one.latest_time = current_time);
 
 				-- SHALL
 				guarantee "The ECU version report's nonce changes each update cycle":
-					out_director.manifest.report_one.nonce > previous_nonce;
+					true -> (out_director.manifest.report_one.nonce > previous_nonce);
+
+				-- MODEL ASSUMPTION
+				guarantee "Initialize manifest":
+					(out_director.manifest = initialization.manifest) -> true;
 
 				-- SHOULD
 				--guarantee "The ECU version report notes any detected attacks":
@@ -549,20 +551,10 @@ public
 				--- IMAGE VERIFICATION ---
 				--------------------------
 				-- SHALL
-				guarantee "The ECU downloads the correct images":
+				guarantee "The ECU downloads/requests the correct images based on the targets metadata":
 					out_image.image_filename = verified_metadata_primary_d.targets_metadata.image_filenames.filename_one and
-					out_image.image_hash = verified_metadata_primary_d.targets_metadata.image_hashes.hash_one and
 					out_image.image_filename_secondary = verified_metadata_primary_d.targets_metadata.image_filenames.filename_two and
-					out_image.image_filename_secondary2 = verified_metadata_primary_d.targets_metadata.image_filenames.filename_three and
-					out_image.image_hash_secondary = verified_metadata_primary_d.targets_metadata.image_hashes.hash_two and
-					out_image.image_hash_secondary2 = verified_metadata_primary_d.targets_metadata.image_hashes.hash_three;
-
-				-- SHALL 
-				-- Interpreting that "What the primary does" steps should be in order
-				guarantee "The ECU does not request/distribute new images (or metadata) during metadata verification":
-					(out_secondary.metadata_present.targets_metadata or out_secondary2.metadata_present.targets_metadata) => 
-					(verification_stage_primary = Agree_Constants::VERIFY_SUCCESS);
-
+					out_image.image_filename_secondary2 = verified_metadata_primary_d.targets_metadata.image_filenames.filename_three;
 
 				-- SHALL
 				guarantee "The ECU verifies images according to the standard":
@@ -584,7 +576,7 @@ public
 				-- MODEL
 				guarantee "Set ECU software version output":
 					ecu_software_version_primary = ((if new_image_verified then 1 else 0) -> 
-											(if new_image_verified then pre (ecu_software_version_primary) + 1 else pre (ecu_software_version_primary)));
+											(if installed_image_primary.filename <> pre(installed_image_primary.filename) then pre (ecu_software_version_primary) + 1 else pre (ecu_software_version_primary)));
 
 				------------------------------------
 				--- METADATA VERIFICATION (FULL) ---
@@ -665,8 +657,8 @@ public
 				guarantee "Full verification: Targets metadata from Image repo":
 					(
 						if targets_image_verified
-						then (verified_metadata_primary_i.targets_metadata = (initialization.metadata_i.targets_metadata -> in_image.metadata.targets_metadata))
-						else ((verified_metadata_primary_i.targets_metadata = (initialization.metadata_i.targets_metadata -> pre (verified_metadata_primary_i.targets_metadata))))
+						then (verified_metadata_primary_i.targets_metadata_i = (initialization.metadata_i.targets_metadata_i -> in_image.metadata.targets_metadata_i))
+						else ((verified_metadata_primary_i.targets_metadata_i = (initialization.metadata_i.targets_metadata_i -> pre (verified_metadata_primary_i.targets_metadata_i))))
 					);
 
 				-- SHALL(?)
@@ -680,6 +672,7 @@ public
 				-- MODEL
 				guarantee "Set the probe":
 					latest_manifest = out_director.manifest;
+					
 			**};
 	end PrimaryEcu;
 
@@ -701,16 +694,20 @@ public
 			-- Model outputs
 			installed_image_secondary: out data port Data_Types::Image.impl
 			{CASE_Consolidated_Properties::probe => true; };
-			verification_stage_secondary: out data port Data_Types::VerificationStage
-			{CASE_Consolidated_Properties::probe => true; };
 			verified_metadata_secondary: out data port Data_Types::Metadata.impl
 			{CASE_Consolidated_Properties::probe => true; };
 			ecu_software_version_secondary: out data port Base_Types::Integer
 			{CASE_Consolidated_Properties::probe => true; };
-			ecu_metadata_version_secondary: out data port Base_Types::Integer
-			{CASE_Consolidated_Properties::probe => true; };
 			latest_report: out data port Data_Types::EcuVersionReport.impl
 			{CASE_Consolidated_Properties::probe => true; };
+
+			-- unused
+			verification_stage_secondary: out data port Data_Types::VerificationStage
+			{CASE_Consolidated_Properties::probe => true; };
+			ecu_metadata_version_secondary: out data port Base_Types::Integer
+			{CASE_Consolidated_Properties::probe => true; };
+
+			
 
 			
 			-- Assumes and guarantees
@@ -740,8 +737,6 @@ public
 					(false -> (current_targets.image_hashes.hash_two	= (Agree_Nodes::HashImg(in_primary.image)))); 
 
 				eq new_metadata_verified: bool = false -> (
-					-- There is new incoming targets metadata
-					(in_primary.metadata_present.targets_metadata) and
 					-- The new Targets metadata reaches the threshold count of valid signatures
 					verified_metadata_secondary.root_metadata.targets_threshold_signatures <= 2 and
 					Agree_Nodes::Match((new_targets.common_payload.signatures.signature_one), 
@@ -749,7 +744,7 @@ public
 					Agree_Nodes::Match((new_targets.common_payload.signatures.signature_two), 
 														 verified_metadata_secondary.root_metadata.targets_public_keys.key_two) and
 					-- The new Targets metadata's version number is greater than or equal to that of the current Targets metadata
-					(new_targets.common_payload.version) >= (current_targets.common_payload.version) and
+					(new_targets.common_payload.version) >= pre (current_targets.common_payload.version) and
 					-- The new Targets metadata is not expired
 					(new_targets.common_payload.expiration) > current_time and
 					-- The new Targets metadata does not list the same ECU ID multiple times
@@ -809,7 +804,13 @@ public
 				-- MODEL
 				guarantee "Set ECU software version output":
 					ecu_software_version_secondary = ((if new_image_verified then 1 else 0) -> 
-								(if new_image_verified then (pre (ecu_software_version_secondary) + 1) else (pre (ecu_software_version_secondary))));
+								(if installed_image_secondary.filename <> pre(installed_image_secondary.filename) then (pre (ecu_software_version_secondary) + 1) else (pre (ecu_software_version_secondary))));
+
+				-- guarantee "Set ECU metadata version output":
+				--  ecu_metadata_version_secondary = (if (verified_metadata_secondary.targets_metadata <> initialization.metadata_d.targets_metadata) then 1 else 0) ->
+				--  		if (verified_metadata_secondary.targets_metadata <> pre (verified_metadata_secondary.targets_metadata)) 
+				-- 		then (pre (ecu_metadata_version_secondary) + 1) 
+				-- 		else (pre (ecu_metadata_version_secondary));
 
 				---------------------------------------
 				--- METADATA VERIFICATION (PARTIAL) ---
@@ -822,11 +823,9 @@ public
 				guarantee "The Secondary ECU verifies metadata according to the standard (partial verification)":
 					if new_metadata_verified
 					then 
-						(((verified_metadata_secondary.targets_metadata = (initialization.metadata_d.targets_metadata -> (new_targets)))) and
-						ecu_metadata_version_secondary = (1 -> pre (ecu_metadata_version_secondary) + 1))
+						(((verified_metadata_secondary.targets_metadata = (initialization.metadata_d.targets_metadata -> (new_targets)))))
 					else 
-						(verified_metadata_secondary.targets_metadata = (initial_targets -> pre (verified_metadata_secondary.targets_metadata)) and
-						ecu_metadata_version_secondary = (0 -> (pre (ecu_metadata_version_secondary))));
+						(verified_metadata_secondary.targets_metadata = (initial_targets -> pre (verified_metadata_secondary.targets_metadata)));
 
 				guarantee "Metadata frame conditions":
 					true -> (
@@ -871,8 +870,9 @@ public
 				eq new_targets: Data_Types::TargetsMetadata.impl = in_primary.metadata.targets_metadata;
 				eq current_targets: Data_Types::TargetsMetadata.impl = verified_metadata_secondary.targets_metadata;
 				eq previous_targets: Data_Types::TargetsMetadata.impl = initialization.metadata_d.targets_metadata -> 
-				                                                        (if new_metadata_verified then pre (verified_metadata_secondary.targets_metadata) 
-																																												  else pre (previous_targets));
+				                                                        (if verified_metadata_secondary.targets_metadata <> pre (verified_metadata_secondary.targets_metadata) 
+																																then pre (verified_metadata_secondary.targets_metadata) 
+																																else pre (previous_targets));
 				
 				eq new_image_verified: bool = 
 					-- The image's hardware ID matches this ECU's hardware ID (based on targets metadata)
@@ -886,8 +886,6 @@ public
 					(false -> (current_targets.image_hashes.hash_three	= (Agree_Nodes::HashImg(in_primary.image)))); 
 
 				eq new_metadata_verified: bool = false -> (
-					-- There is new incoming targets metadata
-					(in_primary.metadata_present.targets_metadata) and
 					-- The new Targets metadata reaches the threshold count of valid signatures
 					verified_metadata_secondary.root_metadata.targets_threshold_signatures <= 2 and
 					Agree_Nodes::Match((new_targets.common_payload.signatures.signature_one), 
@@ -895,7 +893,7 @@ public
 					Agree_Nodes::Match((new_targets.common_payload.signatures.signature_two), 
 														 verified_metadata_secondary.root_metadata.targets_public_keys.key_two) and
 					-- The new Targets metadata's version number is greater than or equal to that of the current Targets metadata
-					(new_targets.common_payload.version) >= (current_targets.common_payload.version) and
+					(new_targets.common_payload.version) >= pre (current_targets.common_payload.version) and
 					-- The new Targets metadata is not expired
 					(new_targets.common_payload.expiration) > current_time and
 					-- The new Targets metadata does not list the same ECU ID multiple times
@@ -951,7 +949,7 @@ public
 				-- MODEL
 				guarantee "Set ECU software version output":
 					ecu_software_version_secondary = ((if new_image_verified then 1 else 0) -> 
-								(if new_image_verified then (pre (ecu_software_version_secondary) + 1) else (pre (ecu_software_version_secondary))));
+								(if installed_image_secondary.filename <> pre(installed_image_secondary.filename) then (pre (ecu_software_version_secondary) + 1) else (pre (ecu_software_version_secondary))));
 
 				---------------------------------------
 				--- METADATA VERIFICATION (PARTIAL) ---
@@ -1042,7 +1040,7 @@ public
 				eq hardware_id_primary: int = initialization.hardware_id_one -> pre (hardware_id_primary);
 				eq hardware_id_secondary: int = initialization.hardware_id_two -> pre (hardware_id_secondary);
 				eq hardware_id_secondary2: int = initialization.hardware_id_three -> pre (hardware_id_secondary2);
-
+				
 				---------------------------
 				--- MODELING PARAMETERS ---
 				---------------------------
@@ -1054,47 +1052,63 @@ public
 				--- ASSUMPTIONS/INITIALIZATION ---
 				----------------------------------
 				-- IMPLICIT ASSUMPTION
-				assume "The targets metadata matches the images available.":
-					model_inputs.image.version = model_inputs.metadata.targets_metadata.release_counters.release_counter_one and
-					model_inputs.image_secondary.version = model_inputs.metadata.targets_metadata.release_counters.release_counter_two and
-					model_inputs.image_secondary2.version = model_inputs.metadata.targets_metadata.release_counters.release_counter_three and
-					model_inputs.image.filename = model_inputs.metadata.targets_metadata.image_filenames.filename_one and
-					model_inputs.image_secondary.filename = model_inputs.metadata.targets_metadata.image_filenames.filename_two and
-					model_inputs.image_secondary2.filename = model_inputs.metadata.targets_metadata.image_filenames.filename_three and
-					Agree_Nodes::HashImg(model_inputs.image) = model_inputs.metadata.targets_metadata.image_hashes.hash_one and
-					Agree_Nodes::HashImg(model_inputs.image_secondary) = model_inputs.metadata.targets_metadata.image_hashes.hash_two and
-					Agree_Nodes::HashImg(model_inputs.image_secondary2) = model_inputs.metadata.targets_metadata.image_hashes.hash_three and
-					model_inputs.metadata.targets_metadata.hardware_ids.hardware_id_one = hardware_id_primary and
-					model_inputs.metadata.targets_metadata.hardware_ids.hardware_id_two = hardware_id_secondary and
-					model_inputs.metadata.targets_metadata.hardware_ids.hardware_id_three = hardware_id_secondary2;
+				assume "The input targets metadata matches the images available.":
+					model_inputs.image1.version = model_inputs.metadata.targets_metadata_i.release_counters.release_counter_one and
+					model_inputs.image2.version = model_inputs.metadata.targets_metadata_i.release_counters.release_counter_two and
+					model_inputs.image3.version = model_inputs.metadata.targets_metadata_i.release_counters.release_counter_three and
+					model_inputs.image4.version = model_inputs.metadata.targets_metadata_i.release_counters.release_counter_four and
+					model_inputs.image5.version = model_inputs.metadata.targets_metadata_i.release_counters.release_counter_five and
+					model_inputs.image1.filename = model_inputs.metadata.targets_metadata_i.image_filenames.filename_one and
+					model_inputs.image2.filename = model_inputs.metadata.targets_metadata_i.image_filenames.filename_two and
+					model_inputs.image3.filename = model_inputs.metadata.targets_metadata_i.image_filenames.filename_three and
+					model_inputs.image4.filename = model_inputs.metadata.targets_metadata_i.image_filenames.filename_four and
+					model_inputs.image5.filename = model_inputs.metadata.targets_metadata_i.image_filenames.filename_five and
+					Agree_Nodes::HashImg(model_inputs.image1) = model_inputs.metadata.targets_metadata_i.image_hashes.hash_one and
+					Agree_Nodes::HashImg(model_inputs.image2) = model_inputs.metadata.targets_metadata_i.image_hashes.hash_two and
+					Agree_Nodes::HashImg(model_inputs.image3) = model_inputs.metadata.targets_metadata_i.image_hashes.hash_three and
+					Agree_Nodes::HashImg(model_inputs.image4) = model_inputs.metadata.targets_metadata_i.image_hashes.hash_four and
+					Agree_Nodes::HashImg(model_inputs.image5) = model_inputs.metadata.targets_metadata_i.image_hashes.hash_five;
 
 				-- IMPLICIT ASSUMPTION
 				assume "Targets metadata image release counters are non-decreasing.":
-					model_inputs.metadata.targets_metadata.release_counters.release_counter_one >= pre (model_inputs.metadata.targets_metadata.release_counters.release_counter_one) and
-					model_inputs.metadata.targets_metadata.release_counters.release_counter_two >= pre (model_inputs.metadata.targets_metadata.release_counters.release_counter_two) and
-					model_inputs.metadata.targets_metadata.release_counters.release_counter_three >= pre (model_inputs.metadata.targets_metadata.release_counters.release_counter_three);
-
+					true -> (
+						model_inputs.metadata.targets_metadata_i.release_counters.release_counter_one >= pre (model_inputs.metadata.targets_metadata_i.release_counters.release_counter_one) and
+						model_inputs.metadata.targets_metadata_i.release_counters.release_counter_two >= pre (model_inputs.metadata.targets_metadata_i.release_counters.release_counter_two) and
+						model_inputs.metadata.targets_metadata_i.release_counters.release_counter_three >= pre (model_inputs.metadata.targets_metadata_i.release_counters.release_counter_three) and
+						model_inputs.metadata.targets_metadata_i.release_counters.release_counter_four >= pre (model_inputs.metadata.targets_metadata_i.release_counters.release_counter_four) and
+						model_inputs.metadata.targets_metadata_i.release_counters.release_counter_five >= pre (model_inputs.metadata.targets_metadata_i.release_counters.release_counter_five)
+					);
+					
 				-- IMPLICIT ASSUMPTION
-				-- Otherwise, (eg) images can fail verification without attack, causing mixed bundle/incompatibility
-				-- issues even in the benign case. For example, one ECU might successfully update while the other
-				-- fails verification, leaving ECUs with incompatible images.
-				assume "All images are authored by a legitimate OEM":
-					Agree_Nodes::AuthoredByOem(Agree_Nodes::HashImg(model_inputs.image)) and
-					Agree_Nodes::AuthoredByOem(Agree_Nodes::HashImg(model_inputs.image_secondary)) and
-					Agree_Nodes::AuthoredByOem(Agree_Nodes::HashImg(model_inputs.image_secondary2)) and
-					Agree_Nodes::AuthoredByOem(model_inputs.metadata.targets_metadata.image_hashes.hash_one) and
-					Agree_Nodes::AuthoredByOem(model_inputs.metadata.targets_metadata.image_hashes.hash_two) and
-					Agree_Nodes::AuthoredByOem(model_inputs.metadata.targets_metadata.image_hashes.hash_three);
+				assume "All input images are authored by a legitimate OEM":
+					Agree_Nodes::AuthoredByOem(Agree_Nodes::HashImg(model_inputs.image1)) and
+					Agree_Nodes::AuthoredByOem(Agree_Nodes::HashImg(model_inputs.image2)) and
+					Agree_Nodes::AuthoredByOem(Agree_Nodes::HashImg(model_inputs.image3)) and
+					Agree_Nodes::AuthoredByOem(Agree_Nodes::HashImg(model_inputs.image4)) and
+					Agree_Nodes::AuthoredByOem(Agree_Nodes::HashImg(model_inputs.image5)) and
+					Agree_Nodes::AuthoredByOem(model_inputs.metadata.targets_metadata_i.image_hashes.hash_one) and
+					Agree_Nodes::AuthoredByOem(model_inputs.metadata.targets_metadata_i.image_hashes.hash_two) and
+					Agree_Nodes::AuthoredByOem(model_inputs.metadata.targets_metadata_i.image_hashes.hash_three) and
+					Agree_Nodes::AuthoredByOem(model_inputs.metadata.targets_metadata_i.image_hashes.hash_four) and
+					Agree_Nodes::AuthoredByOem(model_inputs.metadata.targets_metadata_i.image_hashes.hash_five);
 
 				-- SHALL
 				assume "The image hash uniquely identifies the image":
 					true -> (
-						Agree_Nodes::HashImg(model_inputs.image) >= pre (Agree_Nodes::HashImg(model_inputs.image)) and
-						Agree_Nodes::HashImg(model_inputs.image_secondary) >= pre (Agree_Nodes::HashImg(model_inputs.image_secondary)) and
-						Agree_Nodes::HashImg(model_inputs.image_secondary2) >= pre (Agree_Nodes::HashImg(model_inputs.image_secondary2)) and
-						((Agree_Nodes::HashImg(model_inputs.image) = pre (Agree_Nodes::HashImg(model_inputs.image))) => model_inputs.image = pre (model_inputs.image)) and
-						((Agree_Nodes::HashImg(model_inputs.image_secondary) = pre (Agree_Nodes::HashImg(model_inputs.image_secondary))) => model_inputs.image_secondary = pre (model_inputs.image_secondary)) and
-						((Agree_Nodes::HashImg(model_inputs.image_secondary2) = pre (Agree_Nodes::HashImg(model_inputs.image_secondary2))) => model_inputs.image_secondary2 = pre (model_inputs.image_secondary2))
+						Agree_Nodes::HashImg(model_inputs.image1) >= pre (Agree_Nodes::HashImg(model_inputs.image1)) and
+						Agree_Nodes::HashImg(model_inputs.image2) >= pre (Agree_Nodes::HashImg(model_inputs.image2)) and
+						Agree_Nodes::HashImg(model_inputs.image3) >= pre (Agree_Nodes::HashImg(model_inputs.image3)) and
+						Agree_Nodes::HashImg(model_inputs.image4) >= pre (Agree_Nodes::HashImg(model_inputs.image4)) and
+						Agree_Nodes::HashImg(model_inputs.image5) >= pre (Agree_Nodes::HashImg(model_inputs.image5)) and
+						Agree_Nodes::HashImg(model_inputs.image1) > (Agree_Nodes::HashImg(model_inputs.image2)) and
+						Agree_Nodes::HashImg(model_inputs.image2) > (Agree_Nodes::HashImg(model_inputs.image3)) and
+						Agree_Nodes::HashImg(model_inputs.image3) > (Agree_Nodes::HashImg(model_inputs.image4)) and
+						Agree_Nodes::HashImg(model_inputs.image4) > (Agree_Nodes::HashImg(model_inputs.image5)) and
+						((Agree_Nodes::HashImg(model_inputs.image1) = pre (Agree_Nodes::HashImg(model_inputs.image1))) => model_inputs.image1 = pre (model_inputs.image1)) and
+						((Agree_Nodes::HashImg(model_inputs.image2) = pre (Agree_Nodes::HashImg(model_inputs.image2))) => model_inputs.image2 = pre (model_inputs.image2)) and
+						((Agree_Nodes::HashImg(model_inputs.image3) = pre (Agree_Nodes::HashImg(model_inputs.image3))) => model_inputs.image3 = pre (model_inputs.image3)) and
+						((Agree_Nodes::HashImg(model_inputs.image4) = pre (Agree_Nodes::HashImg(model_inputs.image4))) => model_inputs.image4 = pre (model_inputs.image4)) and
+						((Agree_Nodes::HashImg(model_inputs.image5) = pre (Agree_Nodes::HashImg(model_inputs.image5))) => model_inputs.image5 = pre (model_inputs.image5))
 					);
 
 				-- SHOULD
@@ -1107,23 +1121,25 @@ public
 								(model_inputs.metadata.timestamp_metadata.common_payload.version = (pre (model_inputs.metadata.timestamp_metadata.common_payload.version) + 1))) and
 							((model_inputs.metadata.targets_metadata <> pre (model_inputs.metadata.targets_metadata)) =>
 								(model_inputs.metadata.targets_metadata.common_payload.version = (pre (model_inputs.metadata.targets_metadata.common_payload.version) + 1))) and
+							((model_inputs.metadata.targets_metadata_i <> pre (model_inputs.metadata.targets_metadata_i)) =>
+								(model_inputs.metadata.targets_metadata_i.common_payload.version = (pre (model_inputs.metadata.targets_metadata_i.common_payload.version) + 1))) and
 							((model_inputs.metadata.snapshot_metadata <> pre (model_inputs.metadata.snapshot_metadata)) =>
 								(model_inputs.metadata.snapshot_metadata.common_payload.version = (pre (model_inputs.metadata.snapshot_metadata.common_payload.version) + 1)))
 						)
 					);
 
 				-- SHALL
-				assume "The set of input images does not have conflicts":
-					Agree_Nodes::Compatible3(model_inputs.image.filename, 
-																	 model_inputs.image_secondary.filename,
-																	 model_inputs.image_secondary2.filename);
+				assume "The set of input images has at least one set of 3 without conflicts":
+					Agree_Nodes::Compatible3(model_inputs.image1.filename, 
+																	 model_inputs.image2.filename,
+																	 model_inputs.image3.filename);
 					
 				-- SHOULD
-				assume "Each input image is compatible with its corresponding ECU": 
+				assume "Each set of input images has at least one image compatible with each ECU": 
 					initialization.optional_features_flag => (
-						Agree_Nodes::Compatible(model_inputs.image.filename, hardware_id_primary) and
-						Agree_Nodes::Compatible(model_inputs.image_secondary.filename, hardware_id_secondary) and
-						Agree_Nodes::Compatible(model_inputs.image_secondary2.filename, hardware_id_secondary2)
+						Agree_Nodes::Compatible(model_inputs.image1.filename, hardware_id_primary) and
+						Agree_Nodes::Compatible(model_inputs.image2.filename, hardware_id_secondary) and
+						Agree_Nodes::Compatible(model_inputs.image3.filename, hardware_id_secondary2)
 					);
 
 				assume "The ECUs are initialized with a legitimate software image":
@@ -1149,9 +1165,11 @@ public
 					initialization.metadata_d.targets_metadata.hardware_ids.hardware_id_three = initialization.hardware_id_three;
 					
 				assume "The initial targets metadata is not a rollback of current software":
-					(initialization.metadata_d.targets_metadata = initialization.metadata_i.targets_metadata) and
-					(initialization.metadata_d.targets_metadata.release_counters.release_counter_two >= initialization.secondary_image.version);
-
+					--(initialization.metadata_d.targets_metadata = initialization.metadata_i.targets_metadata) and
+					(initialization.metadata_d.targets_metadata.release_counters.release_counter_one >= initialization.primary_image.version) and
+					(initialization.metadata_d.targets_metadata.release_counters.release_counter_two >= initialization.secondary_image.version) and
+					(initialization.metadata_d.targets_metadata.release_counters.release_counter_three >= initialization.secondary_image2.version);
+					
 				---------------------------
 				--- SECURITY GUARANTEES ---
 				---------------------------
@@ -1167,42 +1185,43 @@ public
 				-- Partial bundle installation
 				-- Attack is trivially possible (no availability guarantees)
 
-				guarantee "Freeze":
-				true => (
-					(ecu_metadata_version_secondary > pre (ecu_metadata_version_secondary)) =>
-						(verified_metadata_secondary.targets_metadata = director_latest_targets)
-				);
+				-- guarantee "Freeze":
+				-- true -> (
+				-- 	(verified_metadata_secondary.targets_metadata <> pre (verified_metadata_secondary.targets_metadata)) =>
+				-- 		(verified_metadata_secondary.targets_metadata = director_latest_targets)
+				-- );
 
-			  guarantee "Mixed-bundles":
-					((ecu_software_version_primary = ecu_software_version_secondary1) and
-					 (ecu_software_version_primary = ecu_software_version_secondary2)) =>
-					(
-						Agree_Nodes::Compatible3(installed_image_primary.filename,
-					                           installed_image_secondary.filename,
-																		 installed_image_secondary2.filename)
-					);
+			  -- guarantee "Mixed-bundles":
+				-- 	(Agree_Nodes::Sofar((ecu_software_version_primary = ecu_software_version_secondary1) and
+				-- 	 										(ecu_software_version_primary = ecu_software_version_secondary2))
+				-- 	) =>
+				-- 	(
+				-- 		Agree_Nodes::Compatible3(installed_image_primary.filename,
+				-- 	                           installed_image_secondary.filename,
+				-- 														 installed_image_secondary2.filename)
+				-- 	);
 
-				guarantee "Mix-and-match":
-					Agree_Nodes::Compatible3(verified_metadata_primary_d.targets_metadata.image_filenames.filename_one,
-																	 verified_metadata_primary_d.targets_metadata.image_filenames.filename_two,
-																	 verified_metadata_primary_d.targets_metadata.image_filenames.filename_three);
+				-- guarantee "Mix-and-match":
+				-- 	Agree_Nodes::Compatible3(verified_metadata_primary_d.targets_metadata.image_filenames.filename_one,
+				-- 													 verified_metadata_primary_d.targets_metadata.image_filenames.filename_two,
+				-- 													 verified_metadata_primary_d.targets_metadata.image_filenames.filename_three);
 
-				guarantee "Rollback":
-					(true -> (installed_image_secondary.version >= pre (installed_image_secondary.version))); 
+				-- guarantee "Rollback":
+				-- 	(true -> (installed_image_secondary.version >= pre (installed_image_secondary.version))); 
 
-				guarantee "Arbitrary software":
-					Agree_Nodes::AuthoredByOem(Agree_Nodes::HashImg(installed_image_secondary));
+				-- guarantee "Arbitrary software":
+				-- 	Agree_Nodes::AuthoredByOem(Agree_Nodes::HashImg(installed_image_secondary));
 
-				-- Director verifies bad VVM and is therefore susceptible to choosing a flawed new bundle of images
-				-- Can mess with attacker capabilities to force different attacks
-				guarantee "Faulty VVM":
-					true -> ((director_latest_manifest <> pre (director_latest_manifest)) => (director_latest_manifest = (primary_latest_manifest)));
+				-- -- Director verifies bad VVM and is therefore susceptible to choosing a flawed new bundle of images
+				-- -- Can mess with attacker capabilities to force different attacks
+				-- guarantee "Faulty VVM":
+				-- 	true -> ((director_latest_manifest <> pre (director_latest_manifest)) => (director_latest_manifest = (primary_latest_manifest)));
 
-				guarantee "Faulty VVM inside vehicle":
-					true ->
-					(((director_latest_manifest <> pre (director_latest_manifest))) => 
-						(director_latest_manifest.report_two = (secondary_latest_report))
-					);
+				-- guarantee "Faulty VVM inside vehicle":
+				-- 	true ->
+				-- 	(((director_latest_manifest <> pre (director_latest_manifest))) => 
+				-- 		(director_latest_manifest.report_two = (secondary_latest_report))
+				-- 	);
 
 				-- Image and ECU incompatible based on ECU hardware ID
 				guarantee "Incompatible image":
@@ -1299,11 +1318,19 @@ public
 			c3: port image_repo.out_primary -> primary_ecu.in_image;
 			c4: port primary_ecu.out_image -> image_repo.in_primary;
 
-			c5: port primary_ecu.out_secondary -> secondary_ecu.in_primary;
-			c6: port secondary_ecu.out_primary -> primary_ecu.in_secondary;
+			c5: port primary_ecu.out_secondary -> secondary_ecu.in_primary{
+					CASE_Consolidated_Properties::connectionType => Trusted;
+				};
+			c6: port secondary_ecu.out_primary -> primary_ecu.in_secondary{
+					CASE_Consolidated_Properties::connectionType => Trusted;
+				};
 
-			c14: port primary_ecu.out_secondary2 -> secondary_ecu2.in_primary;
-			c15: port secondary_ecu2.out_primary2 -> primary_ecu.in_secondary2;
+			c14: port primary_ecu.out_secondary2 -> secondary_ecu2.in_primary{
+					CASE_Consolidated_Properties::connectionType => Trusted;
+				};
+			c15: port secondary_ecu2.out_primary2 -> primary_ecu.in_secondary2{
+					CASE_Consolidated_Properties::connectionType => Trusted;
+				};
 
 			c7: port time_server.out_primary -> primary_ecu.in_time_server;
 
