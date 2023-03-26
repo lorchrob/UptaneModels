@@ -9,9 +9,6 @@ public
 	
 	data implementation InitializationBus.impl
 		subcomponents
-			ecu_key_one: data Base_Types::Integer;
-			ecu_key_two: data Base_Types::Integer;
-			ecu_key_three: data Base_Types::Integer;
 			ecu_id_one: data Base_Types::Integer;
 			ecu_id_two: data Base_Types::Integer;
 			ecu_id_three: data Base_Types::Integer;
@@ -116,8 +113,6 @@ public
 			expiration: data Base_Types::Integer;
 			version: data Base_Types::Integer;
 			filename: data Base_Types::Integer; 
-			signatures: data SignatureList.impl;
-			signature_keys: data KeyList.impl;
 	end CommonPayload.impl;
 
 	data RootMetadata
@@ -126,14 +121,6 @@ public
 	data implementation RootMetadata.impl
 		subcomponents
 			common_payload: data CommonPayload.impl;
-			root_public_keys: data KeyList.impl; 
-			root_threshold_signatures: data Base_Types::Integer;
-			targets_public_keys: data KeyList.impl; 
-			targets_threshold_signatures: data Base_Types::Integer;
-			snapshot_public_keys: data KeyList.impl; 
-			snapshot_threshold_signatures: data Base_Types::Integer;
-			timestamp_public_keys: data KeyList.impl; 
-			timestamp_threshold_signatures: data Base_Types::Integer;
 	end RootMetadata.impl;
 
 	data TargetsMetadata
@@ -228,8 +215,6 @@ public
 	
 	data implementation EcuVersionReport.impl
 		subcomponents
-			signature: data Base_Types::Integer;
-			signature_key: data Base_Types::Integer;
 			ecu_id: data Base_Types::Integer;
 			image_filename: data Base_Types::Integer;
 			image_hash: data Base_Types::Integer;
@@ -243,8 +228,6 @@ public
 
 	data implementation VehicleVersionManifest.impl
 		subcomponents
-			signature: data Base_Types::Integer;
-			signature_key: data Base_Types::Integer;
 			report_one: data EcuVersionReport.impl;
 			report_two: data EcuVersionReport.impl;
 			report_three: data EcuVersionReport.impl;
@@ -319,15 +302,6 @@ public
 			ecu_id_four: data Base_Types::Integer;
 			ecu_id_five: data Base_Types::Integer;
 	end EcuIdList2.impl;
-	
-	data KeyList
-	end KeyList;
-
-	data implementation KeyList.impl
-		subcomponents
-			key_one: data Base_Types::Integer;
-			key_two: data Base_Types::Integer;
-	end KeyList.impl;
 	
 	data FilenameList
 	end FilenameList;
@@ -404,15 +378,6 @@ public
 			release_counter_four: data Base_Types::Integer;
 			release_counter_five: data Base_Types::Integer;
 	end ReleaseCounterList2.impl;
-	
-	data SignatureList
-	end SignatureList;
-	
-	data implementation SignatureList.impl
-		subcomponents
-			signature_one: data Base_Types::Integer;
-			signature_two: data Base_Types::Integer;
-	end SignatureList.impl;
 	
 	data ReleaseCounterList
 	end ReleaseCounterList;

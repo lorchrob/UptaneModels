@@ -34,13 +34,9 @@ public
 			
 			-- Assumes and Guarantees
 			annex agree {**
-				-- Director known information about ECUs-- ECU IDs and keys
 				eq primary_ecu_id: int = (initialization.ecu_id_one -> pre (primary_ecu_id));
 				eq secondary_ecu_id: int = (initialization.ecu_id_two -> pre (secondary_ecu_id));
 				eq secondary_ecu_id2: int = (initialization.ecu_id_three -> pre (secondary_ecu_id2));
-				eq primary_ecu_key: int = (initialization.ecu_key_one -> pre (primary_ecu_key));
-				eq secondary_ecu_key: int = (initialization.ecu_key_two -> pre (secondary_ecu_key));
-				eq secondary_ecu_key2: int = (initialization.ecu_key_three -> pre (secondary_ecu_key2));
 				eq hardware_id_one: int = initialization.hardware_id_one -> pre (hardware_id_one);
 				eq hardware_id_two: int = initialization.hardware_id_two -> pre (hardware_id_two);
 				eq hardware_id_three: int = initialization.hardware_id_three -> pre (hardware_id_three);
@@ -63,11 +59,6 @@ public
 				));
 
 				eq current_manifest: Data_Types::VehicleVersionManifest.impl = initialization.manifest -> (if valid_manifest then (in_primary.manifest) else pre (current_manifest));
-
-				guarantee "Test guarantee to make partial bundle pass in benign case (no targets key rotation)":
-					true -> (out_primary.metadata.root_metadata.targets_public_keys = pre (out_primary.metadata.root_metadata.targets_public_keys)) and
-					true -> (out_primary.metadata.root_metadata.targets_threshold_signatures = pre (out_primary.metadata.root_metadata.targets_threshold_signatures));
-				
 
 				-- IMPLICIT ASSUMPTION
 				guarantee "Metadata well-formedness guarantees (director chooses input images to include in targets metadata)":
@@ -163,8 +154,6 @@ public
 				eq hardware_id_two: int = initialization.hardware_id_two -> pre (hardware_id_two);
 				eq hardware_id_three: int = initialization.hardware_id_three -> pre (hardware_id_three);
 
-				--guarantee "Test guarantee to make partial bundle pass in benign case":
-					--true -> (out_primary.metadata.root_metadata.targets_public_keys = pre (out_primary.metadata.root_metadata.targets_public_keys));
 				-- INITIALIZATION (MODEL)
 				guarantee "Initialize the Image repo":
 					(
@@ -235,7 +224,6 @@ public
 				eq optional_flag: bool = true;
 
 				eq ecu_id: int = initialization.ecu_id_one -> pre (ecu_id);	
-				eq ecu_key: int = initialization.ecu_key_one -> pre (ecu_key);
 				eq hardware_id: int = initialization.hardware_id_one -> pre (hardware_id);
 				eq hardware_id_secondary: int = initialization.hardware_id_two -> pre (hardware_id_secondary);
 				eq hardware_id_secondary2: int = initialization.hardware_id_three -> pre (hardware_id_secondary2);
@@ -296,8 +284,6 @@ public
 					(false -> (current_targets_director.image_hashes.hash_three	= (Agree_Nodes::HashImg(in_image.image_secondary2)))); 
 
 				eq root_director_verified: bool = false -> (
-					-- The payload is properly signed
-					(verified_metadata_primary_d.root_metadata.root_threshold_signatures <= 2) and
 					-- The version number is non-decreasing
 					(in_director.metadata.root_metadata.common_payload.version >= pre (verified_metadata_primary_d.root_metadata.common_payload.version)) and
 					-- The metadata is not expired
@@ -306,8 +292,6 @@ public
 
 				eq timestamp_director_verified: bool = false -> (
 					root_director_verified and
-					-- We have the correct number of valid signatures
-					(verified_metadata_primary_d.root_metadata.timestamp_threshold_signatures <= 2) and
 					-- The version number is non-decreasing
 					(in_director.metadata.timestamp_metadata.common_payload.version >= pre (verified_metadata_primary_d.timestamp_metadata.common_payload.version)) and
 					-- The metadata is not expired
@@ -316,8 +300,6 @@ public
 
 				eq snapshot_director_verified: bool = false -> (
 					root_director_verified and timestamp_director_verified and
-					-- We have the correct number of valid signatures
-					verified_metadata_primary_d.root_metadata.snapshot_threshold_signatures <= 2 and
 					-- The version number is non-decreasing
 					(in_director.metadata.snapshot_metadata.common_payload.version >= pre (verified_metadata_primary_d.snapshot_metadata.common_payload.version)) and
 					-- The metadata is not expired
@@ -339,8 +321,6 @@ public
 					root_director_verified and timestamp_director_verified and snapshot_director_verified and
 					-- Version number matches snapshot metadata
 					in_director.metadata.targets_metadata.common_payload.version = verified_metadata_primary_d.snapshot_metadata.targets_version_numbers.version_number_one and
-					-- We have the correct number of valid signatures
-					verified_metadata_primary_d.root_metadata.targets_threshold_signatures <= 2 and
 					-- The version number is non-decreasing
 					(in_director.metadata.targets_metadata.common_payload.version >= pre (verified_metadata_primary_d.targets_metadata.common_payload.version)) and
 					-- The metadata is not expired
@@ -355,8 +335,6 @@ public
 
 				eq root_image_verified: bool = false -> (
 					root_director_verified and timestamp_director_verified and snapshot_director_verified and targets_director_verified and
-					-- We have the correct number of valid signatures
-					verified_metadata_primary_i.root_metadata.root_threshold_signatures <= 2 and
 					-- The version number is non-decreasing
 					(in_image.metadata.root_metadata.common_payload.version >= pre (verified_metadata_primary_i.root_metadata.common_payload.version)) and
 					-- The metadata is not expired
@@ -366,8 +344,6 @@ public
 				eq timestamp_image_verified: bool = false -> (
 					root_director_verified and timestamp_director_verified and snapshot_director_verified and targets_director_verified and 
 					root_image_verified and
-					-- We have the correct number of valid signatures
-					verified_metadata_primary_i.root_metadata.timestamp_threshold_signatures <= 2 and
 					-- The version number is non-decreasing
 					(in_image.metadata.timestamp_metadata.common_payload.version >= pre (verified_metadata_primary_i.timestamp_metadata.common_payload.version)) and
 					-- The metadata is not expired
@@ -377,8 +353,6 @@ public
 				eq snapshot_image_verified: bool = false -> (
 					root_director_verified and timestamp_director_verified and snapshot_director_verified and targets_director_verified and 
 					root_image_verified and timestamp_image_verified and
-					-- We have the correct number of valid signatures
-					verified_metadata_primary_i.root_metadata.snapshot_threshold_signatures <= 2 and
 					-- The version number is non-decreasing
 					(in_image.metadata.snapshot_metadata.common_payload.version >= pre (verified_metadata_primary_i.snapshot_metadata.common_payload.version)) and
 					-- The metadata is not expired
@@ -401,8 +375,6 @@ public
 					root_image_verified and timestamp_image_verified and snapshot_image_verified and
 					-- Version number matches snapshot metadata
 					in_image.metadata.targets_metadata_i.common_payload.version = verified_metadata_primary_i.snapshot_metadata.targets_version_numbers.version_number_one and
-					-- We have the correct number of valid signatures
-					verified_metadata_primary_i.root_metadata.targets_threshold_signatures <= 2 and
 					-- The version number is non-decreasing
 					(in_image.metadata.targets_metadata_i.common_payload.version >= pre (verified_metadata_primary_i.targets_metadata_i.common_payload.version)) and
 					-- EXTRA ASSUMPTION NEEDED: the expiration time must be far enough in the future such that
@@ -651,7 +623,6 @@ public
 			-- Assumes and guarantees
 			annex agree {**
 				eq ecu_id: int = initialization.ecu_id_two -> pre (ecu_id);	
-				eq ecu_key: int = initialization.ecu_key_two -> pre (ecu_key);
 				eq hardware_id: int = initialization.hardware_id_two -> pre (hardware_id);
 				eq initial_image: Data_Types::Image.impl = initialization.secondary_image -> pre (initial_image);
 				eq initial_targets: Data_Types::TargetsMetadata.impl = initialization.metadata_d.targets_metadata -> pre (initial_targets);
@@ -675,8 +646,6 @@ public
 					(false -> (current_targets.image_hashes.hash_two	= (Agree_Nodes::HashImg(in_primary.image)))); 
 
 				eq new_metadata_verified: bool = false -> (
-					-- The new Targets metadata reaches the threshold count of valid signatures
-					verified_metadata_secondary.root_metadata.targets_threshold_signatures <= 2 and
 					-- The new Targets metadata's version number is greater than or equal to that of the current Targets metadata
 					(new_targets.common_payload.version) >= pre (current_targets.common_payload.version) and
 					-- The new Targets metadata is not expired
@@ -790,7 +759,6 @@ public
 			-- Assumes and guarantees
 			annex agree {**
 				eq ecu_id: int = initialization.ecu_id_three -> pre (ecu_id);	
-				eq ecu_key: int = initialization.ecu_key_three -> pre (ecu_key);
 				eq hardware_id: int = initialization.hardware_id_three -> pre (hardware_id);
 				eq initial_image: Data_Types::Image.impl = initialization.secondary_image2 -> pre (initial_image);
 				eq initial_targets: Data_Types::TargetsMetadata.impl = initialization.metadata_d.targets_metadata -> pre (initial_targets);
@@ -815,8 +783,6 @@ public
 					(false -> (current_targets.image_hashes.hash_three	= (Agree_Nodes::HashImg(in_primary.image)))); 
 
 				eq new_metadata_verified: bool = false -> (
-					-- The new Targets metadata reaches the threshold count of valid signatures
-					verified_metadata_secondary.root_metadata.targets_threshold_signatures <= 2 and
 					-- The new Targets metadata's version number is greater than or equal to that of the current Targets metadata
 					(new_targets.common_payload.version) >= pre (current_targets.common_payload.version) and
 					-- The new Targets metadata is not expired
