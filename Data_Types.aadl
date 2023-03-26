@@ -446,4 +446,4 @@ public
 			release_counter_three: data Base_Types::Integer;
 	end ReleaseCounterList.impl;
 	
-end Data_Types2;
+end Data_Types;
