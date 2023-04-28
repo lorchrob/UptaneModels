@@ -1,11 +1,6 @@
 theory UptaneVVM
 begin
 
-/* TODO
-  * Fill in VVM
-  * Update threshold crypto
-*/
-
 builtins: hashing, asymmetric-encryption, signing
 
   //////////////////////////
@@ -23,19 +18,18 @@ builtins: hashing, asymmetric-encryption, signing
   [ Out(public_key) ]
 
   rule secondary_send_ecu_version_report:
-  [ !Ltk('Secondary', ~secondary_secret_key), Fr(~ecu_version_report), Fr(~nonce) ]
-  --[ SendEcuVRep(<~ecu_version_report, ~nonce>) ]->
+  [ !Ltk('Secondary', ~secondary_secret_key), Fr(~ecu_version_report) ]
+  --[ SendEcuVRep(~ecu_version_report) ]->
   [ 
-    Out(< < ~ecu_version_report, ~nonce >, 
-          sign(< ~ecu_version_report, ~nonce >, ~secondary_secret_key) > ) 
+    Out(< ~ecu_version_report, 
+          sign(~ecu_version_report, ~secondary_secret_key) > ) 
   ]
 
   rule primary_generate_ecu_version_report:
-  [ !Ltk('Primary', ~primary_secret_key), Fr(~ecu_version_report), Fr(~nonce) ]
+  [ !Ltk('Primary', ~primary_secret_key), Fr(~ecu_version_report) ]
   --[ GenEcuVRep(~ecu_version_report) ]->
   [ 
-    PrimaryVRep(< ~ecu_version_report, ~nonce >, 
-                sign(< ~ecu_version_report, ~nonce >, ~primary_secret_key)) 
+    PrimaryVRep(~ecu_version_report, sign(~ecu_version_report, ~primary_secret_key)) 
   ]
   
   rule primary_send_vvm:
@@ -47,12 +41,11 @@ builtins: hashing, asymmetric-encryption, signing
     In(< secondary_version_report, secondary_sig >)
   ]
   --[ SendVVM(vvm) ]->
-  [ Out(< vvm, sign(vvm, ~primary_secret_key)>) ]
+  [ Out(< vvm, sign(vvm, ~primary_secret_key) >) ]
 
+  // Note-- checking for freshness of nonces is performed at the CRV level
   rule director_verify_vvm:
-  let signature = sign(vvm, ~primary_secret_key) 
-      primary_public_key = pk(~primary_secret_key) 
-      vvm = < < ecu_version_report, sig >, < secondary_version_report, secondary_sig > > in
+  let vvm = < < ecu_version_report, sig >, < secondary_version_report, secondary_sig > > in
   [ 
     !Pk('Primary', primary_public_key), 
     !Pk('Secondary', secondary_public_key),
@@ -62,9 +55,6 @@ builtins: hashing, asymmetric-encryption, signing
       Eq(verify(signature, vvm, primary_public_key), true),
       Eq(verify(sig, ecu_version_report, primary_public_key), true),
       Eq(verify(secondary_sig, secondary_version_report, secondary_public_key), true),
-      // Verify nonces haven't been seen before
-      Unique(snd(ecu_version_report)),
-      Unique(snd(secondary_version_report)),
       VerifyVVM(vvm)
     ]->
   [ ]
@@ -83,20 +73,20 @@ builtins: hashing, asymmetric-encryption, signing
   ///////// LEMMAS /////////
   //////////////////////////  
 
-  lemma executable1:
+  //// Sanity-check lemma
+  lemma sanity_check:
     exists-trace 
       "Ex vvm #i. VerifyVVM(vvm) @#i"
   
-  lemma vvm_authentication: 
+  //// Weak authentication lemma
+  lemma vvm_weak_auth: 
     "All vvm #i. (VerifyVVM(vvm) @#i ==> (Ex #j. SendVVM(vvm) @#j & #j<#i))"
 
-  lemma vvm_freshness [use_induction]:
-    "All rep1 rep2 rep3 rep4 sig1 sig2 sig3 sig4 #i #j. 
-      VerifyVVM(< <rep1, sig1>, <rep2, sig2> >) @#i & VerifyVVM(< <rep3, sig3>, <rep4, sig4> >) @#j & #i < #j ==>
-      Ex #k #l. SendEcuVRep(rep2) @#k & SendEcuVRep(rep4) @#l & #k < #l"
-/*
-  lemma vvm_freshness:
-    "All rep1 rep2 rep3 rep4 sig1 sig2 sig3 sig4 #i #j. 
-      SendVVM(< <rep1, sig1>, <rep2, sig2> >) @#i & SendVVM(< <rep3, sig3>, <rep4, sig4> >) @#j & #i < #j ==>
-      Ex #k #l. SendEcuVRep(rep2) @#k & SendEcuVRep(rep4) @#l & #k < #l"*/
+  //// Strong authentication lemma
+  lemma vvm_strong_auth:
+  "All m #i. VerifyVVM(m) @#i ==> 
+    (Ex #j. SendVVM(m) @#j
+      & #j < #i
+      & not (Ex #i2. VerifyVVM(m) @#i2
+                            & not (#i2 = #i)))"
 end

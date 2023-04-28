@@ -57,6 +57,11 @@ public
 			Z = (X >= 0);
 		tel;
 
+		node AuthoredByEcu(X: Data_Types::VehicleVersionManifest.impl) returns (Z: bool);
+		let
+			Z = (X.report_one.ecu_id >= 0);
+		tel;
+
 		node HashImg(X: Data_Types::Image.impl) returns (Y: int);
 		let
 			Y = X.filename;

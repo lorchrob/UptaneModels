@@ -23,7 +23,6 @@ public
 			manifest: data VehicleVersionManifest.impl;
 			report_two: data EcuVersionReport.impl;
 			report_three: data EcuVersionReport.impl;
-			optional_features_flag: data Base_Types::Boolean;
 	end InitializationBus.impl;
 
 	-- MODEL INPUTS --
@@ -410,5 +409,15 @@ public
 			release_counter_two: data Base_Types::Integer;
 			release_counter_three: data Base_Types::Integer;
 	end ReleaseCounterList.impl;
-	
+
+	data OptionalFeatures
+	end OptionalFeatures;
+
+	data implementation OptionalFeatures.impl
+		subcomponents
+			opt_flag_inc_ver: data Base_Types::Boolean;
+			opt_flag_rel_ctr: data Base_Types::Boolean;
+			opt_flag_check_vvm: data Base_Types::Boolean;
+			opt_flag_deps_cons: data Base_Types::Boolean;
+	end OptionalFeatures.impl;
 end Data_Types;

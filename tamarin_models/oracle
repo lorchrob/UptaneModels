@@ -37,84 +37,8 @@ for line in lines:
     l6.append(num)
   else:
     l7.append(num)
-    
-'''   
-for line in lines:
-  num = line.split(':')[0]
-  if "PriMetaDir" in line:
-    l1.append(num)
-  elif "!KU( sign(<pk(~root_seckey" in line:
-    l2.append(num)
-  elif "root_sec" in line:
-    l3.append(num)
-  elif "h(~s" in line:
-    l4.append(num)
-  elif "timestamp_sec" in line:
-    l4.append(num)
-  elif "~snapshot" in line or "~ss" in line:
-    l5.append(num)
-  elif "h(~pri" in line or "h(~sec" in line:
-    l6.append(num)
-  elif "targets_sec" in line:
-    l6.append(num)
-  else:
-    l7.append(num)    
-    
-  
-  
-for line in lines:
-  num = line.split(':')[0]
-  if "PriMetaDir" in line:
-    l1.append(num)
-  elif "!KU( pk(~root_seckey" in line:
-    l2.append(num)
-  #elif "!KU( ~root_seckey" in line:
-    #l3.append(num)
-  elif "!KU( sign(<pk(~root_seckey" in line:
-    l4.append(num)
-  elif "!KU( pk(~timestamp_seckey" in line:
-    l5.append(num)
-  #elif "!KU( ~timestamp_seckey" in line:
-    #l6.append(num)
-  elif "timestamp" in line or "h(~s" in line:
-    l7.append(num)
-  elif "!KU( pk(~snapshot_seckey" in line:
-    l8.append(num)
-  #elif "!KU( ~snapshot_seckey" in line:
-    #l9.append(num)
-  elif "~snapshot" in line or "~ss" in line:
-    l10.append(num)
-  elif "!KU( pk(~targets_seckey" in line:
-    l11.append(num)
-  #elif "!KU( ~targets_seckey" in line:
-    #l12.append(num)
-  elif "targets" in line:
-    l13.append(num)
-  else:
-    l14.append(num)
-  
 
-for line in lines:
-  num = line.split(':')[0]
-  if "PriMetaDir" in line:
-    l1.append(num)
-  elif "!KU( sign(<pk(~root_priv" in line:
-    l2.append(num)
-  elif "!KU( pk(~" in line:
-    l3.append(num)
-  elif "!KU( ~root_p" in line or "!KU( ~root_p" in line or "!KU( ~root_p" in line or "!KU( ~root_p" in line:
-    l4.append(num)
-  elif "timestamp" in line or "h(~" in line:
-    l5.append(num)
-  elif "~snapshot" in line or "~ss" in line:
-    l6.append(num)
-  elif "targets" in line:
-    l7.append(num)
-  else:
-    l8.append(num)
-  '''
-
-ranked = l1 + l2  + l3 + l4 + l5 + l6 + l7 + l8 + l9 + l10 + l11 + l12 + l13 + l14
+ranked = l1 + l2  + l3 + l4 + l5 + l6 + l7
 
 for i in ranked:
   print(i)
