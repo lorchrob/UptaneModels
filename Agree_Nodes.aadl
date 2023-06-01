@@ -59,7 +59,7 @@ public
 
 		node AuthoredByEcu(X: Data_Types::VehicleVersionManifest.impl) returns (Z: bool);
 		let
-			Z = (X.report_one.ecu_id >= 0);
+			Z = (X.report_one.image_length >= 100);
 		tel;
 
 		node HashImg(X: Data_Types::Image.impl) returns (Y: int);
