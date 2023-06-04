@@ -1141,11 +1141,11 @@ public
 
 				--P1
 				--CASE 1
-				-- guarantee "P1: Freeze":
-				-- true -> (
-				-- 	(verified_metadata_secondary.targets_metadata <> pre (verified_metadata_secondary.targets_metadata)) =>
-				-- 		(verified_metadata_secondary.targets_metadata = director_latest_targets)
-				-- );
+				guarantee "P1: Freeze":
+				true -> (
+					(verified_metadata_secondary.targets_metadata <> pre (verified_metadata_secondary.targets_metadata)) =>
+						(verified_metadata_secondary.targets_metadata = director_latest_targets)
+				);
 
 				-- -- --P2
 				-- -- --CASE 1

@@ -219,6 +219,18 @@ builtins: hashing, asymmetric-encryption, signing
       '1'
     )
   ]
+
+  // Key compromise rule allowing the adversary to update
+  // the primary's targets metadata
+  // rule primary_update_metadata:
+  // [
+  //   PriLatestTargetsDir(image_hashes, sigs),
+  //   In( <new_image_hashes, new_sigs> )
+  // ]
+  // -->
+  // [
+  //   PriLatestTargetsDir(new_image_hashes, new_sigs)
+  // ]
  
   // Image repo sends images to primary
   rule image_send_primary_images:

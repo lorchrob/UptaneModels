@@ -1,0 +1,1324 @@
+theory StrongAuth begin
+
+// Function signature and definition of the equational theory E
+
+functions: adec/2, aenc/2, fst/1, h/1, pair/2, pk/1, sign/2, snd/1,
+           true/0, verify/3
+equations:
+    adec(aenc(x.1, pk(x.2)), x.2) = x.1,
+    fst(<x.1, x.2>) = x.1,
+    snd(<x.1, x.2>) = x.2,
+    verify(sign(x.1, x.2), x.1, pk(x.2)) = true
+
+heuristic: o "oracle"
+
+rule (modulo E) generate_key_pair:
+   [ Fr( ~secret_key ) ]
+  --[ GenKeyPair( ~secret_key ), Unique( $ID ) ]->
+   [ !Ltk( $ID, ~secret_key ), !Pk( $ID, pk(~secret_key) ) ]
+
+  /* has exactly the trivial AC variant */
+
+rule (modulo E) get_public_key:
+   [ !Pk( $ID, public_key ) ]
+  --[ GetPubKey( public_key ) ]->
+   [ Out( public_key ) ]
+
+  /* has exactly the trivial AC variant */
+
+rule (modulo E) initialize:
+   [
+   Fr( ~root_seckey ), Fr( ~timestamp_seckey ),
+   Fr( ~snapshot_seckey ), Fr( ~targets_seckey ), Fr( ~snapshot ),
+   Fr( ~primary_image ), Fr( ~secondary_image )
+   ]
+  --[ Unique( 'initialize' ) ]->
+   [
+   PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+             pk(~snapshot_seckey), pk(~targets_seckey)>,
+            h(~snapshot), ~snapshot, <h(~primary_image), h(~secondary_image)>,
+            sign(<h(~primary_image), h(~secondary_image)>, ~targets_seckey),
+            'Not_verifying'
+   ),
+   PriLatestTargets( <h(~primary_image), h(~secondary_image)>,
+                     sign(<h(~primary_image), h(~secondary_image)>, ~targets_seckey)
+   ),
+   !RepoState( <
+                <pk(~root_seckey), pk(~timestamp_seckey), pk(~snapshot_seckey), 
+                 pk(~targets_seckey)>, 
+                h(~snapshot), ~snapshot, h(~primary_image), h(~secondary_image)>,
+               <~root_seckey, ~timestamp_seckey, ~snapshot_seckey, ~targets_seckey
+               >,
+               ~root_seckey, '0'
+   ),
+   !ImageState( <~primary_image, ~secondary_image>, '0' ),
+   SecMeta( pk(~targets_seckey),
+            <h(~primary_image), h(~secondary_image)>
+   )
+   ]
+
+  /* has exactly the trivial AC variant */
+
+rule (modulo E) gen_metadata:
+   [
+   !ImageState( <~primary_image, ~secondary_image>, version ),
+   !RepoState( <
+                <pk(~root_seckey), pk(~timestamp_seckey), pk(~snapshot_seckey), 
+                 pk(~targets_seckey)>, 
+                h(snapshot), snapshot, primary_image_hash, secondary_image_hash>,
+               keys, old_keys, '0'
+   ),
+   Fr( ~new_snapshot ), Fr( ~new_root_seckey ),
+   Fr( ~new_timestamp_seckey ), Fr( ~new_snapshot_seckey ),
+   Fr( ~new_targets_seckey )
+   ]
+  --[ Unique( 'gen_metadata' ) ]->
+   [
+   !RepoState( <
+                <pk(~root_seckey), pk(~timestamp_seckey), pk(~snapshot_seckey), 
+                 pk(~targets_seckey)>, 
+                h(~new_snapshot), ~new_snapshot, h(~primary_image), 
+                h(~secondary_image)>,
+               <~new_root_seckey, ~new_timestamp_seckey, ~new_snapshot_seckey, 
+                ~new_targets_seckey>,
+               ~root_seckey, '1'
+   )
+   ]
+
+  /* has exactly the trivial AC variant */
+
+rule (modulo E) send_root_metadata:
+   [
+   !RepoState( <<pk(~root_seckey), pk(~ts), pk(~ss), pk(~tr)>, 
+                timestamp, ~snapshot, targets>,
+               <~root_seckey, c, d, e>, ~old_root_seckey, version
+   )
+   ]
+  --[
+  LatestDirector( version ),
+  SendRootMetadataDir( <pk(~root_seckey), pk(~ts), pk(~ss), pk(~tr)>
+  ),
+  Unique( 'send_root_metadata' )
+  ]->
+   [
+   Out( <pk(~root_seckey), pk(~ts), pk(~ss), pk(~tr)> ),
+   Out( <
+         sign(<pk(~root_seckey), pk(~ts), pk(~ss), pk(~tr)>, ~root_seckey), 
+         sign(<pk(~root_seckey), pk(~ts), pk(~ss), pk(~tr)>,
+              ~old_root_seckey)
+        >
+   )
+   ]
+
+  /* has exactly the trivial AC variant */
+
+rule (modulo E) send_timestamp_metadata:
+   [
+   !RepoState( <root, h(~snapshot), ~snapshot, targets>,
+               <a, ~timestamp_seckey, c, d>, old_keys, version
+   )
+   ]
+  --[
+  LatestDirector( version ),
+  SendTimestampMetadataDir( h(~snapshot) ),
+  Unique( 'send_timestamp_metadata' )
+  ]->
+   [ Out( h(~snapshot) ), Out( sign(h(~snapshot), ~timestamp_seckey) )
+   ]
+
+  /* has exactly the trivial AC variant */
+
+rule (modulo E) send_snapshot_metadata:
+   [
+   !RepoState( <root, timestamp, ~snapshot, targets>,
+               <a, c, ~snapshot_seckey, e>, old_keys, version
+   )
+   ]
+  --[
+  LatestDirector( version ), SendSnapshotMetadataDir( ~snapshot ),
+  Unique( 'send_snapshot_metadata' )
+  ]->
+   [ Out( ~snapshot ), Out( sign(~snapshot, ~snapshot_seckey) ) ]
+
+  /* has exactly the trivial AC variant */
+
+rule (modulo E) send_targets_metadata:
+   [
+   !RepoState( <root, timestamp, snapshot, h(~primary_image), 
+                h(~secondary_image)>,
+               <a, c, d, ~targets_seckey>, old_keys, version
+   )
+   ]
+  --[
+  LatestDirector( version ),
+  SendTargetsMetadataDir( <h(~primary_image), h(~secondary_image)> ),
+  SendTargetsCombined( <h(~primary_image), h(~secondary_image)> ),
+  Unique( 'send_targets_metadata' )
+  ]->
+   [
+   Out( <h(~primary_image), h(~secondary_image)> ),
+   Out( sign(<h(~primary_image), h(~secondary_image)>,
+             ~targets_seckey)
+   )
+   ]
+
+  /* has exactly the trivial AC variant */
+
+rule (modulo E) primary_verify_meta_root:
+   [
+   In( <new_root_pubkey, a, b, c> ), In( <sig1, sig2> ),
+   PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+             pk(~snapshot_seckey), pk(~targets_seckey)>,
+            timestamp, snapshot, targets, sigs, any_state
+   )
+   ]
+  --[
+  Eq( verify(sig1, <new_root_pubkey, a, b, c>, pk(~root_seckey)),
+      true
+  ),
+  Eq( verify(sig2, <new_root_pubkey, a, b, c>, new_root_pubkey), true
+  ),
+  PriVerifyMetaDirRoot( <new_root_pubkey, a, b, c> ),
+  Unique( 'primary_verify_meta_root' )
+  ]->
+   [
+   PriMeta( <new_root_pubkey, a, b, c>, timestamp, snapshot, targets,
+            sigs, 'Verified_meta_root'
+   )
+   ]
+
+  // loop breaker: [2]
+  /*
+  rule (modulo AC) primary_verify_meta_root:
+     [
+     In( <new_root_pubkey, a, b, c> ), In( <sig1, sig2> ),
+     PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+               pk(~snapshot_seckey), pk(~targets_seckey)>,
+              timestamp, snapshot, targets, sigs, any_state
+     )
+     ]
+    --[
+    Eq( z, true ), Eq( z.1, true ),
+    PriVerifyMetaDirRoot( <new_root_pubkey, a, b, c> ),
+    Unique( 'primary_verify_meta_root' )
+    ]->
+     [
+     PriMeta( <new_root_pubkey, a, b, c>, timestamp, snapshot, targets,
+              sigs, 'Verified_meta_root'
+     )
+     ]
+    variants (modulo AC)
+    1. ~root_seckey
+             = ~root_seckey.30
+       a     = a.34
+       b     = b.36
+       c     = c.37
+       new_root_pubkey
+             = new_root_pubkey.38
+       sig1  = sig1.39
+       sig2  = sig2.40
+       z     = verify(sig1.39, <new_root_pubkey.38, a.34, b.36, c.37>,
+                      pk(~root_seckey.30))
+       z.1   = verify(sig2.40, <new_root_pubkey.38, a.34, b.36, c.37>,
+                      new_root_pubkey.38)
+    
+    2. ~root_seckey
+             = ~root_seckey.30
+       a     = a.34
+       b     = b.36
+       c     = c.37
+       new_root_pubkey
+             = new_root_pubkey.38
+       sig1  = sign(<new_root_pubkey.38, a.34, b.36, c.37>,
+                    ~root_seckey.30)
+       sig2  = sig2.40
+       z     = true
+       z.1   = verify(sig2.40, <new_root_pubkey.38, a.34, b.36, c.37>,
+                      new_root_pubkey.38)
+    
+    3. ~root_seckey
+             = ~root_seckey.43
+       a     = a.47
+       b     = b.49
+       c     = c.50
+       new_root_pubkey
+             = pk(x.84)
+       sig1  = sig1.52
+       sig2  = sign(<pk(x.84), a.47, b.49, c.50>, x.84)
+       z     = verify(sig1.52, <pk(x.84), a.47, b.49, c.50>,
+                      pk(~root_seckey.43))
+       z.1   = true
+    
+    4. ~root_seckey
+             = ~root_seckey.47
+       a     = a.51
+       b     = b.53
+       c     = c.54
+       new_root_pubkey
+             = pk(x.92)
+       sig1  = sign(<pk(x.92), a.51, b.53, c.54>, ~root_seckey.47)
+       sig2  = sign(<pk(x.92), a.51, b.53, c.54>, x.92)
+       z     = true
+       z.1   = true
+    // loop breaker: [2]
+  */
+
+rule (modulo E) primary_verify_meta_root2:
+   [
+   In( <new_root_pubkey, a, b, c> ), In( <sig1, sig2> ),
+   PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+             pk(~snapshot_seckey), pk(~targets_seckey)>,
+            timestamp, snapshot, targets, sigs, 'Verified_meta_root'
+   )
+   ]
+  --[
+  Eq( verify(sig1, <new_root_pubkey, a, b, c>, pk(~root_seckey)),
+      true
+  ),
+  Eq( verify(sig2, <new_root_pubkey, a, b, c>, new_root_pubkey), true
+  ),
+  PriVerifyMetaDirRoot( <new_root_pubkey, a, b, c> ),
+  Unique( 'primary_verify_meta_root2' )
+  ]->
+   [
+   PriMeta( <new_root_pubkey, a, b, c>, timestamp, snapshot, targets,
+            sigs, 'Verified_meta_root'
+   )
+   ]
+
+  // loop breaker: [2]
+  /*
+  rule (modulo AC) primary_verify_meta_root2:
+     [
+     In( <new_root_pubkey, a, b, c> ), In( <sig1, sig2> ),
+     PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+               pk(~snapshot_seckey), pk(~targets_seckey)>,
+              timestamp, snapshot, targets, sigs, 'Verified_meta_root'
+     )
+     ]
+    --[
+    Eq( z, true ), Eq( z.1, true ),
+    PriVerifyMetaDirRoot( <new_root_pubkey, a, b, c> ),
+    Unique( 'primary_verify_meta_root2' )
+    ]->
+     [
+     PriMeta( <new_root_pubkey, a, b, c>, timestamp, snapshot, targets,
+              sigs, 'Verified_meta_root'
+     )
+     ]
+    variants (modulo AC)
+    1. ~root_seckey
+             = ~root_seckey.28
+       a     = a.32
+       b     = b.33
+       c     = c.34
+       new_root_pubkey
+             = new_root_pubkey.35
+       sig1  = sig1.36
+       sig2  = sig2.37
+       z     = verify(sig1.36, <new_root_pubkey.35, a.32, b.33, c.34>,
+                      pk(~root_seckey.28))
+       z.1   = verify(sig2.37, <new_root_pubkey.35, a.32, b.33, c.34>,
+                      new_root_pubkey.35)
+    
+    2. ~root_seckey
+             = ~root_seckey.28
+       a     = a.32
+       b     = b.33
+       c     = c.34
+       new_root_pubkey
+             = new_root_pubkey.35
+       sig1  = sign(<new_root_pubkey.35, a.32, b.33, c.34>,
+                    ~root_seckey.28)
+       sig2  = sig2.37
+       z     = true
+       z.1   = verify(sig2.37, <new_root_pubkey.35, a.32, b.33, c.34>,
+                      new_root_pubkey.35)
+    
+    3. ~root_seckey
+             = ~root_seckey.40
+       a     = a.44
+       b     = b.45
+       c     = c.46
+       new_root_pubkey
+             = pk(x.78)
+       sig1  = sig1.48
+       sig2  = sign(<pk(x.78), a.44, b.45, c.46>, x.78)
+       z     = verify(sig1.48, <pk(x.78), a.44, b.45, c.46>,
+                      pk(~root_seckey.40))
+       z.1   = true
+    
+    4. ~root_seckey
+             = ~root_seckey.44
+       a     = a.48
+       b     = b.49
+       c     = c.50
+       new_root_pubkey
+             = pk(x.86)
+       sig1  = sign(<pk(x.86), a.48, b.49, c.50>, ~root_seckey.44)
+       sig2  = sign(<pk(x.86), a.48, b.49, c.50>, x.86)
+       z     = true
+       z.1   = true
+    // loop breaker: [2]
+  */
+
+rule (modulo E) primary_verify_meta_timestamp:
+   [
+   In( new_timestamp ), In( sig ),
+   PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+             pk(~snapshot_seckey), pk(~targets_seckey)>,
+            timestamp, snapshot, targets, sigs, 'Verified_meta_root'
+   )
+   ]
+  --[
+  Eq( verify(sig, new_timestamp, pk(~timestamp_seckey)), true ),
+  PriVerifyMetaDirTimestamp( new_timestamp ),
+  Unique( 'primary_verify_meta_timestamp' )
+  ]->
+   [
+   PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+             pk(~snapshot_seckey), pk(~targets_seckey)>,
+            new_timestamp, snapshot, targets, sigs, 'Verified_meta_timestamp'
+   )
+   ]
+
+  /*
+  rule (modulo AC) primary_verify_meta_timestamp:
+     [
+     In( new_timestamp ), In( sig ),
+     PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+               pk(~snapshot_seckey), pk(~targets_seckey)>,
+              timestamp, snapshot, targets, sigs, 'Verified_meta_root'
+     )
+     ]
+    --[
+    Eq( z, true ), PriVerifyMetaDirTimestamp( new_timestamp ),
+    Unique( 'primary_verify_meta_timestamp' )
+    ]->
+     [
+     PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+               pk(~snapshot_seckey), pk(~targets_seckey)>,
+              new_timestamp, snapshot, targets, sigs, 'Verified_meta_timestamp'
+     )
+     ]
+    variants (modulo AC)
+    1. ~timestamp_seckey
+             = ~timestamp_seckey.16
+       new_timestamp
+             = new_timestamp.17
+       sig   = sign(new_timestamp.17, ~timestamp_seckey.16)
+       z     = true
+    
+    2. ~timestamp_seckey
+             = ~timestamp_seckey.17
+       new_timestamp
+             = new_timestamp.18
+       sig   = sig.19
+       z     = verify(sig.19, new_timestamp.18, pk(~timestamp_seckey.17))
+  */
+
+rule (modulo E) primary_verify_meta_timestamp2:
+   [
+   In( new_timestamp ), In( sig ),
+   PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+             pk(~snapshot_seckey), pk(~targets_seckey)>,
+            timestamp, snapshot, targets, sigs, 'Verified_meta_timestamp'
+   )
+   ]
+  --[
+  Eq( verify(sig, new_timestamp, pk(~timestamp_seckey)), true ),
+  PriVerifyMetaDirTimestamp( new_timestamp ),
+  Unique( 'primary_verify_meta_timestamp2' )
+  ]->
+   [
+   PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+             pk(~snapshot_seckey), pk(~targets_seckey)>,
+            new_timestamp, snapshot, targets, sigs, 'Verified_meta_timestamp'
+   )
+   ]
+
+  // loop breaker: [2]
+  /*
+  rule (modulo AC) primary_verify_meta_timestamp2:
+     [
+     In( new_timestamp ), In( sig ),
+     PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+               pk(~snapshot_seckey), pk(~targets_seckey)>,
+              timestamp, snapshot, targets, sigs, 'Verified_meta_timestamp'
+     )
+     ]
+    --[
+    Eq( z, true ), PriVerifyMetaDirTimestamp( new_timestamp ),
+    Unique( 'primary_verify_meta_timestamp2' )
+    ]->
+     [
+     PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+               pk(~snapshot_seckey), pk(~targets_seckey)>,
+              new_timestamp, snapshot, targets, sigs, 'Verified_meta_timestamp'
+     )
+     ]
+    variants (modulo AC)
+    1. ~timestamp_seckey
+             = ~timestamp_seckey.15
+       new_timestamp
+             = new_timestamp.16
+       sig   = sign(new_timestamp.16, ~timestamp_seckey.15)
+       z     = true
+    
+    2. ~timestamp_seckey
+             = ~timestamp_seckey.16
+       new_timestamp
+             = new_timestamp.17
+       sig   = sig.18
+       z     = verify(sig.18, new_timestamp.17, pk(~timestamp_seckey.16))
+    // loop breaker: [2]
+  */
+
+rule (modulo E) primary_verify_meta_snapshot:
+   [
+   In( new_snapshot ), In( sig ),
+   PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+             pk(~snapshot_seckey), pk(~targets_seckey)>,
+            timestamp, snapshot, targets, sigs, 'Verified_meta_timestamp'
+   )
+   ]
+  --[
+  Eq( verify(sig, new_snapshot, pk(~snapshot_seckey)), true ),
+  Eq( h(new_snapshot), timestamp ),
+  PriVerifyMetaDirSnapshot( new_snapshot ),
+  Unique( 'primary_verify_meta_snapshot' )
+  ]->
+   [
+   PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+             pk(~snapshot_seckey), pk(~targets_seckey)>,
+            timestamp, new_snapshot, targets, sigs, 'Verified_meta_snapshot'
+   )
+   ]
+
+  /*
+  rule (modulo AC) primary_verify_meta_snapshot:
+     [
+     In( new_snapshot ), In( sig ),
+     PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+               pk(~snapshot_seckey), pk(~targets_seckey)>,
+              timestamp, snapshot, targets, sigs, 'Verified_meta_timestamp'
+     )
+     ]
+    --[
+    Eq( z, true ), Eq( h(new_snapshot), timestamp ),
+    PriVerifyMetaDirSnapshot( new_snapshot ),
+    Unique( 'primary_verify_meta_snapshot' )
+    ]->
+     [
+     PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+               pk(~snapshot_seckey), pk(~targets_seckey)>,
+              timestamp, new_snapshot, targets, sigs, 'Verified_meta_snapshot'
+     )
+     ]
+    variants (modulo AC)
+    1. ~snapshot_seckey
+             = ~snapshot_seckey.18
+       new_snapshot
+             = new_snapshot.21
+       sig   = sign(new_snapshot.21, ~snapshot_seckey.18)
+       z     = true
+    
+    2. ~snapshot_seckey
+             = ~snapshot_seckey.19
+       new_snapshot
+             = new_snapshot.22
+       sig   = sig.23
+       z     = verify(sig.23, new_snapshot.22, pk(~snapshot_seckey.19))
+  */
+
+rule (modulo E) primary_verify_meta_snapshot2:
+   [
+   In( new_snapshot ), In( sig ),
+   PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+             pk(~snapshot_seckey), pk(~targets_seckey)>,
+            timestamp, snapshot, targets, sigs, 'Verified_meta_snapshot'
+   )
+   ]
+  --[
+  Eq( verify(sig, new_snapshot, pk(~snapshot_seckey)), true ),
+  Eq( h(new_snapshot), timestamp ),
+  PriVerifyMetaDirSnapshot( new_snapshot ),
+  Unique( 'primary_verify_meta_snapshot2' )
+  ]->
+   [
+   PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+             pk(~snapshot_seckey), pk(~targets_seckey)>,
+            timestamp, new_snapshot, targets, sigs, 'Verified_meta_snapshot'
+   )
+   ]
+
+  // loop breaker: [2]
+  /*
+  rule (modulo AC) primary_verify_meta_snapshot2:
+     [
+     In( new_snapshot ), In( sig ),
+     PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+               pk(~snapshot_seckey), pk(~targets_seckey)>,
+              timestamp, snapshot, targets, sigs, 'Verified_meta_snapshot'
+     )
+     ]
+    --[
+    Eq( z, true ), Eq( h(new_snapshot), timestamp ),
+    PriVerifyMetaDirSnapshot( new_snapshot ),
+    Unique( 'primary_verify_meta_snapshot2' )
+    ]->
+     [
+     PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+               pk(~snapshot_seckey), pk(~targets_seckey)>,
+              timestamp, new_snapshot, targets, sigs, 'Verified_meta_snapshot'
+     )
+     ]
+    variants (modulo AC)
+    1. ~snapshot_seckey
+             = ~snapshot_seckey.17
+       new_snapshot
+             = new_snapshot.20
+       sig   = sign(new_snapshot.20, ~snapshot_seckey.17)
+       z     = true
+    
+    2. ~snapshot_seckey
+             = ~snapshot_seckey.18
+       new_snapshot
+             = new_snapshot.21
+       sig   = sig.22
+       z     = verify(sig.22, new_snapshot.21, pk(~snapshot_seckey.18))
+    // loop breaker: [2]
+  */
+
+rule (modulo E) primary_verify_meta_targets:
+   [
+   In( new_targets ), In( sig ),
+   PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+             pk(~snapshot_seckey), pk(~targets_seckey)>,
+            timestamp, snapshot, targets, sigs, 'Verified_meta_snapshot'
+   ),
+   PriLatestTargets( targets, old_sig )
+   ]
+  --[
+  Eq( verify(sig, new_targets, pk(~targets_seckey)), true ),
+  PriVerifyMetaDirTargets( new_targets ),
+  Unique( 'primary_verify_meta_targets' )
+  ]->
+   [
+   PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+             pk(~snapshot_seckey), pk(~targets_seckey)>,
+            timestamp, snapshot, new_targets, sig, 'Verified_meta_targets'
+   ),
+   PriLatestTargets( new_targets, sig )
+   ]
+
+  // loop breaker: [3]
+  /*
+  rule (modulo AC) primary_verify_meta_targets:
+     [
+     In( new_targets ), In( sig ),
+     PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+               pk(~snapshot_seckey), pk(~targets_seckey)>,
+              timestamp, snapshot, targets, sigs, 'Verified_meta_snapshot'
+     ),
+     PriLatestTargets( targets, old_sig )
+     ]
+    --[
+    Eq( z, true ), PriVerifyMetaDirTargets( new_targets ),
+    Unique( 'primary_verify_meta_targets' )
+    ]->
+     [
+     PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+               pk(~snapshot_seckey), pk(~targets_seckey)>,
+              timestamp, snapshot, new_targets, sig, 'Verified_meta_targets'
+     ),
+     PriLatestTargets( new_targets, sig )
+     ]
+    variants (modulo AC)
+    1. ~targets_seckey
+             = ~targets_seckey.18
+       new_targets
+             = new_targets.20
+       sig   = sign(new_targets.20, ~targets_seckey.18)
+       z     = true
+    
+    2. ~targets_seckey
+             = ~targets_seckey.20
+       new_targets
+             = new_targets.22
+       sig   = sig.24
+       z     = verify(sig.24, new_targets.22, pk(~targets_seckey.20))
+    // loop breaker: [3]
+  */
+
+rule (modulo E) primary_verify_meta_targets2:
+   [
+   In( new_targets ), In( sig ),
+   PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+             pk(~snapshot_seckey), pk(~targets_seckey)>,
+            timestamp, snapshot, targets, sigs, 'Verified_meta_targets'
+   ),
+   PriLatestTargets( targets, old_sig )
+   ]
+  --[
+  Eq( verify(sig, new_targets, pk(~targets_seckey)), true ),
+  PriVerifyMetaDirTargets( new_targets ),
+  Unique( 'primary_verify_meta_targets2' )
+  ]->
+   [
+   PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+             pk(~snapshot_seckey), pk(~targets_seckey)>,
+            timestamp, snapshot, new_targets, sig, 'Verified_meta_targets'
+   ),
+   PriLatestTargets( new_targets, sig )
+   ]
+
+  // loop breakers: [3,2]
+  /*
+  rule (modulo AC) primary_verify_meta_targets2:
+     [
+     In( new_targets ), In( sig ),
+     PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+               pk(~snapshot_seckey), pk(~targets_seckey)>,
+              timestamp, snapshot, targets, sigs, 'Verified_meta_targets'
+     ),
+     PriLatestTargets( targets, old_sig )
+     ]
+    --[
+    Eq( z, true ), PriVerifyMetaDirTargets( new_targets ),
+    Unique( 'primary_verify_meta_targets2' )
+    ]->
+     [
+     PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+               pk(~snapshot_seckey), pk(~targets_seckey)>,
+              timestamp, snapshot, new_targets, sig, 'Verified_meta_targets'
+     ),
+     PriLatestTargets( new_targets, sig )
+     ]
+    variants (modulo AC)
+    1. ~targets_seckey
+             = ~targets_seckey.17
+       new_targets
+             = new_targets.19
+       sig   = sign(new_targets.19, ~targets_seckey.17)
+       z     = true
+    
+    2. ~targets_seckey
+             = ~targets_seckey.19
+       new_targets
+             = new_targets.21
+       sig   = sig.23
+       z     = verify(sig.23, new_targets.21, pk(~targets_seckey.19))
+    // loop breakers: [3,2]
+  */
+
+rule (modulo E) primary_send_metadata:
+   [
+   PriLatestTargets( <h(~primary_image), h(~secondary_image)>,
+                     sign(<h(~primary_image), h(~secondary_image)>, ~targets_seckey)
+   )
+   ]
+  --[
+  PriSendMeta( <h(~primary_image), h(~secondary_image)> ),
+  SendTargetsCombined( <h(~primary_image), h(~secondary_image)> ),
+  Unique( 'primary_send_metadata' )
+  ]->
+   [
+   Out( <<h(~primary_image), h(~secondary_image)>, 
+         sign(<h(~primary_image), h(~secondary_image)>, ~targets_seckey)>
+   ),
+   PriLatestTargets( <h(~primary_image), h(~secondary_image)>,
+                     sign(<h(~primary_image), h(~secondary_image)>, ~targets_seckey)
+   )
+   ]
+
+  // loop breaker: [0]
+  /* has exactly the trivial AC variant */
+
+rule (modulo E) secondary_verify_metadata:
+   [ In( <new_targets, sig> ), SecMeta( targets_pubkey, targets ) ]
+  --[
+  Eq( verify(sig, new_targets, targets_pubkey), true ),
+  SecVerifyTargetsMetadataDir( new_targets ),
+  Unique( 'secondary_verify_metadata' )
+  ]->
+   [ SecMeta( targets_pubkey, new_targets ) ]
+
+  // loop breaker: [1]
+  /*
+  rule (modulo AC) secondary_verify_metadata:
+     [ In( <new_targets, sig> ), SecMeta( targets_pubkey, targets ) ]
+    --[
+    Eq( z, true ), SecVerifyTargetsMetadataDir( new_targets ),
+    Unique( 'secondary_verify_metadata' )
+    ]->
+     [ SecMeta( targets_pubkey, new_targets ) ]
+    variants (modulo AC)
+    1. new_targets
+             = new_targets.7
+       sig   = sig.8
+       targets_pubkey
+             = targets_pubkey.10
+       z     = verify(sig.8, new_targets.7, targets_pubkey.10)
+    
+    2. new_targets
+             = new_targets.8
+       sig   = sign(new_targets.8, x.14)
+       targets_pubkey
+             = pk(x.14)
+       z     = true
+    // loop breaker: [1]
+  */
+
+restriction Equality:
+  "∀ x y #i. (Eq( x, y ) @ #i) ⇒ (x = y)"
+  // safety formula
+
+restriction LatestDirector:
+  "((∀ x #i #j.
+      ((LatestDirector( '0' ) @ #i) ∧ (LatestDirector( x ) @ #j)) ⇒
+      ((x = '0') ∨ (#i < #j))) ∧
+    (∀ x #i #j.
+      ((LatestDirector( '1' ) @ #i) ∧ (LatestDirector( x ) @ #j)) ⇒
+      (((x = '1') ∨ (x = '0')) ∨ (#i < #j)))) ∧
+   (∀ x #i #j.
+     ((LatestDirector( '2' ) @ #i) ∧ (LatestDirector( x ) @ #j)) ⇒
+     ((((x = '2') ∨ (x = '1')) ∨ (x = '0')) ∨ (#i < #j)))"
+  // safety formula
+
+restriction Unique:
+  "∀ x #i #j. ((Unique( x ) @ #i) ∧ (Unique( x ) @ #j)) ⇒ (#i = #j)"
+  // safety formula
+
+lemma sanity_check1:
+  exists-trace "∃ meta #i. PriVerifyMetaDirRoot( meta ) @ #i"
+/*
+guarded formula characterizing all satisfying traces:
+"∃ meta #i. (PriVerifyMetaDirRoot( meta ) @ #i)"
+*/
+by sorry
+
+lemma sanity_check2:
+  exists-trace "∃ meta #i. PriVerifyMetaDirTimestamp( meta ) @ #i"
+/*
+guarded formula characterizing all satisfying traces:
+"∃ meta #i. (PriVerifyMetaDirTimestamp( meta ) @ #i)"
+*/
+by sorry
+
+lemma sanity_check3:
+  exists-trace "∃ meta #i. PriVerifyMetaDirSnapshot( meta ) @ #i"
+/*
+guarded formula characterizing all satisfying traces:
+"∃ meta #i. (PriVerifyMetaDirSnapshot( meta ) @ #i)"
+*/
+by sorry
+
+lemma sanity_check4:
+  exists-trace "∃ meta #i. PriVerifyMetaDirTargets( meta ) @ #i"
+/*
+guarded formula characterizing all satisfying traces:
+"∃ meta #i. (PriVerifyMetaDirTargets( meta ) @ #i)"
+*/
+by sorry
+
+lemma sanity_check5:
+  exists-trace "∃ meta #i. SecVerifyTargetsMetadataDir( meta ) @ #i"
+/*
+guarded formula characterizing all satisfying traces:
+"∃ meta #i. (SecVerifyTargetsMetadataDir( meta ) @ #i)"
+*/
+by sorry
+
+lemma root_meta_weak_auth:
+  all-traces
+  "∀ root #i.
+    (PriVerifyMetaDirRoot( root ) @ #i) ⇒
+    (∃ #j. (SendRootMetadataDir( root ) @ #j) ∧ (#j < #i))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ root #i.
+  (PriVerifyMetaDirRoot( root ) @ #i)
+ ∧
+  ∀ #j. (SendRootMetadataDir( root ) @ #j) ⇒ ¬(#j < #i)"
+*/
+by sorry
+
+lemma root_meta_strong_auth:
+  all-traces
+  "∀ m #i.
+    (PriVerifyMetaDirRoot( m ) @ #i) ⇒
+    (∃ #j.
+      ((SendRootMetadataDir( m ) @ #j) ∧ (#j < #i)) ∧
+      (¬(∃ #i2. (PriVerifyMetaDirRoot( m ) @ #i2) ∧ (¬(#i2 = #i)))))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ m #i.
+  (PriVerifyMetaDirRoot( m ) @ #i)
+ ∧
+  ∀ #j.
+   (SendRootMetadataDir( m ) @ #j)
+  ⇒
+   ((¬(#j < #i)) ∨
+    (∃ #i2. (PriVerifyMetaDirRoot( m ) @ #i2) ∧ ¬(#i2 = #i)))"
+*/
+simplify
+solve( PriVerifyMetaDirRoot( m ) @ #i )
+  case primary_verify_meta_root
+  solve( PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+                   pk(~snapshot_seckey), pk(~targets_seckey)>,
+                  timestamp, snapshot, targets, sigs, any_state
+         ) ▶₂ #i )
+    case initialize
+    solve( !KU( sign(<pk(x), a, b, c>, ~root_seckey) ) @ #vk.8 )
+      case send_root_metadata_case_1
+      solve( !KU( pk(~root_seckey) ) @ #vk.2 )
+        case send_root_metadata
+        solve( PriVerifyMetaDirRoot( <pk(~root_seckey), 
+                                      pk(~timestamp_seckey), pk(~snapshot_seckey), 
+                                      pk(~targets_seckey)>
+               ) @ #i2 )
+          case primary_verify_meta_root2
+          solve( PriMeta( <pk(~root_seckey.1), pk(~timestamp_seckey.1), 
+                           pk(~snapshot_seckey.1), pk(~targets_seckey.1)>,
+                          timestamp, snapshot.1, targets, sigs, 'Verified_meta_root'
+                 ) ▶₂ #i2 )
+            case primary_verify_meta_root
+            solve( !KU( pk(~timestamp_seckey) ) @ #vk.5 )
+              case send_root_metadata
+              solve( !KU( pk(~snapshot_seckey) ) @ #vk.7 )
+                case send_root_metadata
+                solve( !KU( pk(~targets_seckey) ) @ #vk.8 )
+                  case send_root_metadata
+                  SOLVED // trace found
+                qed
+              qed
+            qed
+          qed
+        qed
+      qed
+    qed
+  qed
+qed
+
+lemma timestamp_meta_weak_auth:
+  all-traces
+  "∀ ts #i.
+    (PriVerifyMetaDirTimestamp( ts ) @ #i) ⇒
+    (∃ #j. (SendTimestampMetadataDir( ts ) @ #j) ∧ (#j < #i))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ ts #i.
+  (PriVerifyMetaDirTimestamp( ts ) @ #i)
+ ∧
+  ∀ #j. (SendTimestampMetadataDir( ts ) @ #j) ⇒ ¬(#j < #i)"
+*/
+by sorry
+
+lemma timestamp_meta_strong_auth:
+  all-traces
+  "∀ m #i.
+    (PriVerifyMetaDirTimestamp( m ) @ #i) ⇒
+    (∃ #j.
+      ((SendTimestampMetadataDir( m ) @ #j) ∧ (#j < #i)) ∧
+      (¬(∃ #i2.
+          (PriVerifyMetaDirTimestamp( m ) @ #i2) ∧ (¬(#i2 = #i)))))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ m #i.
+  (PriVerifyMetaDirTimestamp( m ) @ #i)
+ ∧
+  ∀ #j.
+   (SendTimestampMetadataDir( m ) @ #j)
+  ⇒
+   ((¬(#j < #i)) ∨
+    (∃ #i2. (PriVerifyMetaDirTimestamp( m ) @ #i2) ∧ ¬(#i2 = #i)))"
+*/
+simplify
+solve( PriVerifyMetaDirTimestamp( m ) @ #i )
+  case primary_verify_meta_timestamp
+  solve( PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+                   pk(~snapshot_seckey), pk(~targets_seckey)>,
+                  timestamp, snapshot, targets, sigs, 'Verified_meta_root'
+         ) ▶₂ #i )
+    case primary_verify_meta_root
+    solve( PriMeta( <pk(~root_seckey.1), pk(~timestamp_seckey.1), 
+                     pk(~snapshot_seckey.1), pk(~targets_seckey.1)>,
+                    timestamp, snapshot, targets, sigs, any_state
+           ) ▶₂ #vr )
+      case initialize
+      solve( !KU( sign(<pk(~root_seckey), pk(~timestamp_seckey), 
+                        pk(~snapshot_seckey), pk(~targets_seckey)>,
+                       ~root_seckey.1)
+             ) @ #vk.10 )
+        case send_root_metadata_case_1
+        solve( !KU( pk(~root_seckey) ) @ #vk.4 )
+          case send_root_metadata
+          solve( !KU( sign(m, ~timestamp_seckey) ) @ #vk.4 )
+            case send_timestamp_metadata
+            solve( !KU( pk(~timestamp_seckey) ) @ #vk.7 )
+              case send_root_metadata
+              solve( !KU( h(~snapshot) ) @ #vk.6 )
+                case c_h
+                solve( PriVerifyMetaDirTimestamp( h(~snapshot) ) @ #i2 )
+                  case primary_verify_meta_timestamp2
+                  solve( PriMeta( <pk(~root_seckey.1), pk(~timestamp_seckey.1), 
+                                   pk(~snapshot_seckey.1), pk(~targets_seckey.1)>,
+                                  timestamp, snapshot.1, targets, sigs, 'Verified_meta_timestamp'
+                         ) ▶₂ #i2 )
+                    case primary_verify_meta_timestamp
+                    solve( !KU( pk(~snapshot_seckey) ) @ #vk.9 )
+                      case send_root_metadata
+                      solve( !KU( ~snapshot ) @ #vk.11 )
+                        case send_snapshot_metadata
+                        solve( !KU( pk(~targets_seckey) ) @ #vk.11 )
+                          case send_root_metadata
+                          SOLVED // trace found
+                        qed
+                      qed
+                    qed
+                  qed
+                qed
+              qed
+            qed
+          qed
+        qed
+      qed
+    qed
+  qed
+qed
+
+lemma snapshot_meta_weak_auth:
+  all-traces
+  "∀ ss #i.
+    (PriVerifyMetaDirSnapshot( ss ) @ #i) ⇒
+    (∃ #j. (SendSnapshotMetadataDir( ss ) @ #j) ∧ (#j < #i))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ ss #i.
+  (PriVerifyMetaDirSnapshot( ss ) @ #i)
+ ∧
+  ∀ #j. (SendSnapshotMetadataDir( ss ) @ #j) ⇒ ¬(#j < #i)"
+*/
+by sorry
+
+lemma snapshot_meta_strong_auth:
+  all-traces
+  "∀ m #i.
+    (PriVerifyMetaDirSnapshot( m ) @ #i) ⇒
+    (∃ #j.
+      ((SendSnapshotMetadataDir( m ) @ #j) ∧ (#j < #i)) ∧
+      (¬(∃ #i2. (PriVerifyMetaDirSnapshot( m ) @ #i2) ∧ (¬(#i2 = #i)))))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ m #i.
+  (PriVerifyMetaDirSnapshot( m ) @ #i)
+ ∧
+  ∀ #j.
+   (SendSnapshotMetadataDir( m ) @ #j)
+  ⇒
+   ((¬(#j < #i)) ∨
+    (∃ #i2. (PriVerifyMetaDirSnapshot( m ) @ #i2) ∧ ¬(#i2 = #i)))"
+*/
+simplify
+solve( PriVerifyMetaDirSnapshot( m ) @ #i )
+  case primary_verify_meta_snapshot
+  solve( PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+                   pk(~snapshot_seckey), pk(~targets_seckey)>,
+                  h(m), snapshot, targets, sigs, 'Verified_meta_timestamp'
+         ) ▶₂ #i )
+    case primary_verify_meta_timestamp_case_1
+    solve( PriMeta( <pk(~root_seckey.1), pk(~timestamp_seckey.1), 
+                     pk(~snapshot_seckey.1), pk(~targets_seckey.1)>,
+                    timestamp, snapshot, targets, sigs, any_state
+           ) ▶₂ #vr.1 )
+      case initialize
+      solve( !KU( sign(<pk(~root_seckey), pk(~timestamp_seckey), 
+                        pk(~snapshot_seckey), pk(~targets_seckey)>,
+                       ~root_seckey.1)
+             ) @ #vk.12 )
+        case send_root_metadata_case_1
+        solve( !KU( pk(~root_seckey) ) @ #vk.6 )
+          case send_root_metadata
+          solve( !KU( sign(h(m), ~timestamp_seckey) ) @ #vk.6 )
+            case send_timestamp_metadata
+            solve( !KU( h(~snapshot) ) @ #vk.7 )
+              case c_h
+              solve( !KU( pk(~timestamp_seckey) ) @ #vk.9 )
+                case send_root_metadata
+                solve( !KU( sign(~snapshot, ~snapshot_seckey) ) @ #vk.8 )
+                  case send_snapshot_metadata
+                  solve( !KU( pk(~snapshot_seckey) ) @ #vk.11 )
+                    case send_root_metadata
+                    solve( !KU( ~snapshot ) @ #vk.10 )
+                      case send_snapshot_metadata
+                      solve( PriVerifyMetaDirSnapshot( ~snapshot ) @ #i2 )
+                        case primary_verify_meta_snapshot2
+                        solve( PriMeta( <pk(~root_seckey.1), pk(~timestamp_seckey.1), 
+                                         pk(~snapshot_seckey.1), pk(~targets_seckey.1)>,
+                                        h(~snapshot), snapshot.1, targets, sigs,
+                                        'Verified_meta_snapshot'
+                               ) ▶₂ #i2 )
+                          case primary_verify_meta_snapshot
+                          solve( !KU( pk(~targets_seckey) ) @ #vk.12 )
+                            case send_root_metadata
+                            SOLVED // trace found
+                          qed
+                        qed
+                      qed
+                    qed
+                  qed
+                qed
+              qed
+            qed
+          qed
+        qed
+      qed
+    qed
+  qed
+qed
+
+lemma targets_meta_weak_auth1:
+  all-traces
+  "∀ targets #i.
+    (PriVerifyMetaDirTargets( targets ) @ #i) ⇒
+    (∃ #j. (SendTargetsMetadataDir( targets ) @ #j) ∧ (#j < #i))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ targets #i.
+  (PriVerifyMetaDirTargets( targets ) @ #i)
+ ∧
+  ∀ #j. (SendTargetsMetadataDir( targets ) @ #j) ⇒ ¬(#j < #i)"
+*/
+by sorry
+
+lemma targets_meta_weak_auth2:
+  all-traces
+  "∀ targets #i.
+    (PriVerifyMetaDirTargets( targets ) @ #i) ⇒
+    ((∃ #j. (SendTargetsMetadataDir( targets ) @ #j) ∧ (#j < #i)) ∨
+     (∃ #j. (PriSendMeta( targets ) @ #j) ∧ (#j < #i)))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ targets #i.
+  (PriVerifyMetaDirTargets( targets ) @ #i)
+ ∧
+  (∀ #j. (SendTargetsMetadataDir( targets ) @ #j) ⇒ ¬(#j < #i)) ∧
+  (∀ #j. (PriSendMeta( targets ) @ #j) ⇒ ¬(#j < #i))"
+*/
+by sorry
+
+lemma targets_meta_strong_auth:
+  all-traces
+  "∀ m #i.
+    (PriVerifyMetaDirTargets( m ) @ #i) ⇒
+    (∃ #j.
+      ((SendTargetsCombined( m ) @ #j) ∧ (#j < #i)) ∧
+      (¬(∃ #i2. (PriVerifyMetaDirTargets( m ) @ #i2) ∧ (¬(#i2 = #i)))))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ m #i.
+  (PriVerifyMetaDirTargets( m ) @ #i)
+ ∧
+  ∀ #j.
+   (SendTargetsCombined( m ) @ #j)
+  ⇒
+   ((¬(#j < #i)) ∨
+    (∃ #i2. (PriVerifyMetaDirTargets( m ) @ #i2) ∧ ¬(#i2 = #i)))"
+*/
+simplify
+solve( PriVerifyMetaDirTargets( m ) @ #i )
+  case primary_verify_meta_targets
+  solve( PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+                   pk(~snapshot_seckey), pk(~targets_seckey)>,
+                  timestamp, snapshot, targets, sigs, 'Verified_meta_snapshot'
+         ) ▶₂ #i )
+    case primary_verify_meta_snapshot2
+    solve( PriLatestTargets( targets, old_sig ) ▶₃ #i )
+      case initialize
+      solve( PriMeta( <pk(~root_seckey), pk(~timestamp_seckey), 
+                       pk(~snapshot_seckey), pk(~targets_seckey)>,
+                      h(snapshot), snapshot.1, <h(~primary_image), h(~secondary_image)>,
+                      sigs, 'Verified_meta_snapshot'
+             ) ▶₂ #vr )
+        case primary_verify_meta_snapshot_case_1
+        solve( PriMeta( <pk(~root_seckey.2), pk(~timestamp_seckey.2), 
+                         pk(~snapshot_seckey.2), pk(~targets_seckey.2)>,
+                        timestamp, snapshot.2, <h(~primary_image), h(~secondary_image)>,
+                        sigs, any_state
+               ) ▶₂ #vr.4 )
+          case initialize
+          solve( !KU( sign(<pk(~root_seckey), pk(~timestamp_seckey), 
+                            pk(~snapshot_seckey), pk(~targets_seckey)>,
+                           ~root_seckey.1)
+                 ) @ #vk.14 )
+            case send_root_metadata_case_1
+            solve( !KU( pk(~root_seckey) ) @ #vk.8 )
+              case send_root_metadata
+              solve( !KU( sign(h(snapshot), ~timestamp_seckey) ) @ #vk.8 )
+                case send_timestamp_metadata
+                solve( !KU( h(~snapshot) ) @ #vk.9 )
+                  case c_h
+                  solve( !KU( pk(~timestamp_seckey) ) @ #vk.11 )
+                    case send_root_metadata
+                    solve( !KU( sign(~snapshot, ~snapshot_seckey) ) @ #vk.10 )
+                      case send_snapshot_metadata
+                      solve( !KU( pk(~snapshot_seckey) ) @ #vk.13 )
+                        case send_root_metadata
+                        solve( !KU( ~snapshot ) @ #vk.12 )
+                          case send_snapshot_metadata
+                          solve( !KU( sign(m, ~targets_seckey) ) @ #vk.13 )
+                            case send_targets_metadata
+                            solve( !KU( h(~primary_image) ) @ #vk.15 )
+                              case send_targets_metadata
+                              solve( !KU( h(~secondary_image) ) @ #vk.16 )
+                                case send_targets_metadata
+                                solve( PriVerifyMetaDirTargets( <h(~primary_image), 
+                                                                 h(~secondary_image)>
+                                       ) @ #i2 )
+                                  case primary_verify_meta_targets2
+                                  solve( PriMeta( <pk(~root_seckey.1), pk(~timestamp_seckey.1), 
+                                                   pk(~snapshot_seckey.1), pk(~targets_seckey.1)>,
+                                                  timestamp, snapshot.1, targets, sigs,
+                                                  'Verified_meta_targets'
+                                         ) ▶₂ #i2 )
+                                    case primary_verify_meta_targets
+                                    solve( PriLatestTargets( <h(~primary_image), h(~secondary_image)
+                                                             >,
+                                                             old_sig
+                                           ) ▶₃ #i2 )
+                                      case primary_send_metadata
+                                      solve( PriLatestTargets( <h(~primary_image), 
+                                                                h(~secondary_image)>,
+                                                               sign(<h(~primary_image), 
+                                                                     h(~secondary_image)>,
+                                                                    ~targets_seckey.1)
+                                             ) ▶₀ #vr.17 )
+                                        case primary_verify_meta_targets
+                                        solve( !KU( pk(~targets_seckey) ) @ #vk.16 )
+                                          case send_root_metadata
+                                          SOLVED // trace found
+                                        qed
+                                      qed
+                                    qed
+                                  qed
+                                qed
+                              qed
+                            qed
+                          qed
+                        qed
+                      qed
+                    qed
+                  qed
+                qed
+              qed
+            qed
+          qed
+        qed
+      qed
+    qed
+  qed
+qed
+
+lemma meta_weak_auth_sec1:
+  all-traces
+  "∀ targets #i.
+    (SecVerifyTargetsMetadataDir( targets ) @ #i) ⇒
+    (∃ #j. (PriSendMeta( targets ) @ #j) ∧ (#j < #i))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ targets #i.
+  (SecVerifyTargetsMetadataDir( targets ) @ #i)
+ ∧
+  ∀ #j. (PriSendMeta( targets ) @ #j) ⇒ ¬(#j < #i)"
+*/
+by sorry
+
+lemma meta_weak_auth_sec2:
+  all-traces
+  "∀ targets #i.
+    (SecVerifyTargetsMetadataDir( targets ) @ #i) ⇒
+    ((∃ #j. (SendTargetsMetadataDir( targets ) @ #j) ∧ (#j < #i)) ∨
+     (∃ #j. (PriSendMeta( targets ) @ #j) ∧ (#j < #i)))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ targets #i.
+  (SecVerifyTargetsMetadataDir( targets ) @ #i)
+ ∧
+  (∀ #j. (SendTargetsMetadataDir( targets ) @ #j) ⇒ ¬(#j < #i)) ∧
+  (∀ #j. (PriSendMeta( targets ) @ #j) ⇒ ¬(#j < #i))"
+*/
+by sorry
+
+lemma meta_strong_auth_sec:
+  all-traces
+  "∀ m #i.
+    (SecVerifyTargetsMetadataDir( m ) @ #i) ⇒
+    ((∃ #j.
+       ((SendTargetsMetadataDir( m ) @ #j) ∧ (#j < #i)) ∧
+       (¬(∃ #i2.
+           (SecVerifyTargetsMetadataDir( m ) @ #i2) ∧ (¬(#i2 = #i))))) ∨
+     (∃ #j.
+       ((PriSendMeta( m ) @ #j) ∧ (#j < #i)) ∧
+       (¬(∃ #i2.
+           (SecVerifyTargetsMetadataDir( m ) @ #i2) ∧ (¬(#i2 = #i))))))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ m #i.
+  (SecVerifyTargetsMetadataDir( m ) @ #i)
+ ∧
+  (∀ #j.
+    (SendTargetsMetadataDir( m ) @ #j)
+   ⇒
+    ((¬(#j < #i)) ∨
+     (∃ #i2. (SecVerifyTargetsMetadataDir( m ) @ #i2) ∧ ¬(#i2 = #i)))) ∧
+  (∀ #j.
+    (PriSendMeta( m ) @ #j)
+   ⇒
+    ((¬(#j < #i)) ∨
+     (∃ #i2. (SecVerifyTargetsMetadataDir( m ) @ #i2) ∧ ¬(#i2 = #i))))"
+*/
+by sorry
+
+lemma meta_strong_auth_sec2:
+  all-traces
+  "∀ m #i #j.
+    (((SecVerifyTargetsMetadataDir( m ) @ #i) ∧
+      (PriSendMeta( m ) @ #j)) ∧
+     (#j < #i)) ⇒
+    (¬(∃ #i2.
+        (SecVerifyTargetsMetadataDir( m ) @ #i2) ∧ (¬(#i2 = #i))))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ m #i #j.
+  (SecVerifyTargetsMetadataDir( m ) @ #i) ∧ (PriSendMeta( m ) @ #j)
+ ∧
+  (#j < #i) ∧
+  (∃ #i2. (SecVerifyTargetsMetadataDir( m ) @ #i2) ∧ ¬(#i2 = #i))"
+*/
+by sorry
+
+lemma meta_strong_auth_sec3:
+  all-traces
+  "∀ m #i.
+    (SecVerifyTargetsMetadataDir( m ) @ #i) ⇒
+    (∃ #j.
+      ((PriSendMeta( m ) @ #j) ∧ (#j < #i)) ∧
+      (¬(∃ #i2.
+          (SecVerifyTargetsMetadataDir( m ) @ #i2) ∧ (¬(#i2 = #i)))))"
+/*
+guarded formula characterizing all counter-examples:
+"∃ m #i.
+  (SecVerifyTargetsMetadataDir( m ) @ #i)
+ ∧
+  ∀ #j.
+   (PriSendMeta( m ) @ #j)
+  ⇒
+   ((¬(#j < #i)) ∨
+    (∃ #i2. (SecVerifyTargetsMetadataDir( m ) @ #i2) ∧ ¬(#i2 = #i)))"
+*/
+by sorry
+
+/* All well-formedness checks were successful. */
+
+end

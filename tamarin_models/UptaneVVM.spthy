@@ -17,6 +17,16 @@ builtins: hashing, asymmetric-encryption, signing
   --[ GetPubKey(public_key) ]->
   [ Out(public_key) ]
 
+  // rule key_compromise1:
+  // [ ~Ltk('Primary', secret_key) ]
+  // -->
+  // [ Out(secret_key) ]
+
+  // rule key_compromise2:
+  // [ ~Ltk('Secondary', secret_key) ]
+  // -->
+  // [ Out(secret_key) ]
+
   rule secondary_send_ecu_version_report:
   [ !Ltk('Secondary', ~secondary_secret_key), Fr(~ecu_version_report) ]
   --[ SendEcuVRep(~ecu_version_report) ]->

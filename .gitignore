@@ -1,3 +1,6 @@
 /.aadlbin-gen/
-
+*.aes
+*.txt
 .DS_Store
+/old/
+/attack_traces/
