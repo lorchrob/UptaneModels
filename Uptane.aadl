@@ -1,8 +1,3 @@
--- TODO
---	 1. Fill out guarantees (see comments at the end of individual components)
---   2. Trim down model
---   3. Look into "SHOULD" parts of the protocol 
-
 package Uptane
 
 public
@@ -41,6 +36,7 @@ public
 			initialization: in data port Data_Types::InitializationBus.impl;
 			in_primary: in data port Data_Types::PrimaryToDirector.impl;
 			opt_flags: in data port Data_Types::OptionalFeatures.impl;
+			time: in data port Base_Types::Integer;
 			
 			-- Outputs
 			out_primary: out data port Data_Types::DirectorToPrimary.impl;
@@ -72,7 +68,7 @@ public
 						((in_primary.manifest.report_one.ecu_id)) = primary_ecu_id and
 						((in_primary.manifest.report_two.ecu_id)) = secondary_ecu_id and
 						((in_primary.manifest.report_three.ecu_id)) = secondary_ecu_id2
-					)
+					) 
 				));
 
 				eq current_manifest: Data_Types::VehicleVersionManifest.impl = initialization.manifest -> (if valid_manifest then (in_primary.manifest) else pre (current_manifest));
@@ -1141,22 +1137,20 @@ public
 
 				--P1
 				--CASE 1
-				guarantee "P1: Freeze":
-				true -> (
-					(verified_metadata_secondary.targets_metadata <> pre (verified_metadata_secondary.targets_metadata)) =>
-						(verified_metadata_secondary.targets_metadata = director_latest_targets)
-				);
+				-- guarantee "P1: Freeze":
+				-- true -> (
+				-- 	(verified_metadata_secondary.targets_metadata <> pre (verified_metadata_secondary.targets_metadata)) =>
+				-- 		(verified_metadata_secondary.targets_metadata = director_latest_targets)
+				-- );
 
 				-- -- --P2
-				-- -- --CASE 1
-				-- guarantee "P2: Replay VVM":
-				-- 	true -> ((director_latest_manifest <> pre (director_latest_manifest)) => (director_latest_manifest = (primary_latest_manifest)));
-				-- -- --CASE 1
-				-- -- guarantee "P2: Replay VVM inside vehicle":
-				-- -- 	true ->
-				-- -- 	(((director_latest_manifest <> pre (director_latest_manifest))) => 
-				-- -- 		(director_latest_manifest.report_two = (secondary_latest_report))
-				-- -- 	);
+				guarantee "P2: Replay VVM":
+					true -> ((director_latest_manifest <> pre (director_latest_manifest)) => (director_latest_manifest = (primary_latest_manifest)));
+				guarantee "P2: Replay VVM inside vehicle":
+					true ->
+					(((director_latest_manifest <> pre (director_latest_manifest))) => 
+						(director_latest_manifest.report_two = (secondary_latest_report))
+					);
 
 				-- -- -- P3
 				-- -- -- CASE 2
@@ -1165,8 +1159,8 @@ public
 
 				-- -- -- P4
 				-- -- -- CASE 1
-				-- guarantee "P4: Arbitrary software":
-				-- 	Agree_Nodes::AuthoredByOem(Agree_Nodes::HashImg(installed_image_secondary));
+				guarantee "P4: Arbitrary software":
+					Agree_Nodes::AuthoredByOem(Agree_Nodes::HashImg(installed_image_secondary));
 
 				-- --P5
 				-- -- CASE 1
@@ -1175,10 +1169,10 @@ public
 
 				--P6
 				-- CASE 1
-				guarantee "P6: Mix-and-match":
-					Agree_Nodes::Compatible3(verified_metadata_primary_d.targets_metadata.image_filenames.filename_one,
-																	 verified_metadata_primary_d.targets_metadata.image_filenames.filename_two,
-																	 verified_metadata_primary_d.targets_metadata.image_filenames.filename_three);
+				-- guarantee "P6: Mix-and-match":
+				-- 	Agree_Nodes::Compatible3(verified_metadata_primary_d.targets_metadata.image_filenames.filename_one,
+				-- 													 verified_metadata_primary_d.targets_metadata.image_filenames.filename_two,
+				-- 													 verified_metadata_primary_d.targets_metadata.image_filenames.filename_three);
 
 				-- -- -- P7
 				-- -- -- CASE 3
@@ -1299,6 +1293,11 @@ public
 			c4: port primary_ecu.out_image -> image_repo.in_primary;
 			c7: port time_server.out_primary -> primary_ecu.in_time_server;
 
+			-- Assume director has access to latest time
+			c50: port time_server.out_primary -> director_repo.time{
+					CASE_Consolidated_Properties::connectionType => Trusted;
+				};
+
 			-- Internal
 			c5: port primary_ecu.out_secondary -> secondary_ecu.in_primary{
 					CASE_Consolidated_Properties::connectionType => Trusted;
@@ -1338,18 +1337,11 @@ public
 				};
 
 			-- Optional features flags
-			c38: port opt_flag_inc_ver -> opt_flags.in_opt_flag_inc_ver{
-					CASE_Consolidated_Properties::connectionType => Trusted;
-				};
-			c39: port opt_flag_rel_ctr -> opt_flags.in_opt_flag_rel_ctr{
-					CASE_Consolidated_Properties::connectionType => Trusted;
-				};
-			c40: port opt_flag_check_vvm -> opt_flags.in_opt_flag_check_vvm{
-					CASE_Consolidated_Properties::connectionType => Trusted;
-				};
-			c41: port opt_flag_deps_cons -> opt_flags.in_opt_flag_deps_cons{
-					CASE_Consolidated_Properties::connectionType => Trusted;
-				};
+			c38: port opt_flag_inc_ver -> opt_flags.in_opt_flag_inc_ver;
+			c39: port opt_flag_rel_ctr -> opt_flags.in_opt_flag_rel_ctr;
+			c40: port opt_flag_check_vvm -> opt_flags.in_opt_flag_check_vvm;
+			c41: port opt_flag_deps_cons -> opt_flags.in_opt_flag_deps_cons;
+
 			c42: port opt_flags.out_flags -> director_repo.opt_flags{
 					CASE_Consolidated_Properties::connectionType => Trusted;
 				};
